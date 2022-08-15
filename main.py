@@ -85,13 +85,13 @@ class Learners(object):
 
         # Batch data
         def get_batch_in_num(x):
-            if x.day <= 15:
+            if x.day < 13:
                 return int(f"{x.strftime('%y%m')}01")  
             else:
                 return int(f"{x.strftime('%y%m')}02")
 
         def get_batch_in_text(x):
-            if x.day <= 15:
+            if x.day < 13:
                 return f"{x.strftime('%y-%b')}-Early"
             else:
                 return f"{x.strftime('%y-%b')}-Late" 
