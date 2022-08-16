@@ -43,7 +43,7 @@ class Learners(object):
             'wv-redux': 'WebVirgil/M2.3',
             'web-virgil-intro-to-nodejs': 'WebVirgil/M3.1',
             'web-virgil-expressjs-with-mongodb': 'WebVirgil/M3.2',
-            'wv-restful-backend': 'WebVirgil/M3.3'
+            'wv-restful-backend': 'WebVirgil/M3.3',
 
             # DS Virgil
             'da-virgil': 'DSVirgil',
