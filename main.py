@@ -44,7 +44,6 @@ class Learners(object):
             'web-virgil-intro-to-nodejs': 'WebVirgil/M3.1',
             'web-virgil-expressjs-with-mongodb': 'WebVirgil/M3.2',
             'wv-restful-backend': 'WebVirgil/M3.3',
-
             # DS Virgil
             'da-virgil': 'DSVirgil',
             'dv-m11-basic-python': 'DSVirgil/M1.1',
