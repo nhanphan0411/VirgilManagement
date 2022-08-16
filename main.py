@@ -270,7 +270,7 @@ class Learners(object):
         if course == 'Web':
             by_active_module.columns = ['active at M1', 'active at M2', 'active at M3']
         elif course == 'DS':
-            by_active_module.columns = ['active at M1', 'active at M2', 'active at M3', 'active at M4']
+            by_active_module.columns = ['active at M1', 'active at M2', 'active at M3', 'active at M4', 'active at M5']
 
         by_batch = pd.concat([by_status, by_active_module], axis=1).fillna(0).astype(int)
         by_batch = by_batch.drop(index=['All']).reset_index()
