@@ -32,7 +32,6 @@ class Learners(object):
         self.master_data_dict = sheet_dicts['master']
         self.lw_data_dict = sheet_dicts['learnworld']
         self.lw_map_dir = {
-            # Web Virgil
             'ftw-virgil': 'WebVirgil',
             'web-virgil-m11-basic-html-cs': 'WebVirgil/M1.1',
             'programming-with-javascript': 'WebVirgil/M1.2',
@@ -44,7 +43,6 @@ class Learners(object):
             'web-virgil-intro-to-nodejs': 'WebVirgil/M3.1',
             'web-virgil-expressjs-with-mongodb': 'WebVirgil/M3.2',
             'wv-restful-backend': 'WebVirgil/M3.3',
-            # DS Virgil
             'da-virgil': 'DSVirgil',
             'dv-m11-basic-python': 'DSVirgil/M1.1',
             'dv-m12-python-practice': 'DSVirgil/M1.2',
