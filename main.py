@@ -42,6 +42,9 @@ class Learners(object):
             'wv-react-ecosystem': 'WebVirgil/M2.2',
             'wv-redux': 'WebVirgil/M2.3',
             'web-virgil-intro-to-nodejs': 'WebVirgil/M3.1',
+            'web-virgil-expressjs-with-mongodb': 'WebVirgil/M3.2',
+            'wv-restful-backend': 'WebVirgil/M3.3'
+
             # DS Virgil
             'da-virgil': 'DSVirgil',
             'dv-m11-basic-python': 'DSVirgil/M1.1',
@@ -51,6 +54,8 @@ class Learners(object):
             'dv-m31-pandas-101': 'DSVirgil/M3.1',
             'dv-m32-prepare-your-data': 'DSVirgil/M3.2',
             'dv-m41-analysis-and-visualization': 'DSVirgil/M4.1',
+            'dv-m42-report': 'DSVirgil/M4.2',
+            'dv-ml-fundamentals': 'DSVirgil/M5.1'
         }
         self.reports_dir = {'Web': 'WebVirgil',
                             'DS': 'DSVirgil'}
