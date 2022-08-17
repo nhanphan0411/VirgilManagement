@@ -202,9 +202,9 @@ class Learners(object):
         minicourses = COURSE_INFO[f"{course} Minicourses"]
         
         # Convert to datetime
-        pace_report['Start'] = pd.to_datetime(pace_report['Start'])
+        pace_report.loc[:, 'Start'] = pd.to_datetime(pace_report.loc[:, 'Start'])
         pace_report.loc[pace_report['Finish'] == '-', 'Finish'] = None
-        pace_report['Finish'] = pd.to_datetime(pace_report['Finish'])
+        pace_report.loc[:, 'Finish'] = pd.to_datetime(pace_report.loc[:, 'Finish'])
         
         # Reformat the table
         pace_report = pace_report.pivot_table(index=['Email', 'User Name', 'Tags'],
@@ -276,6 +276,7 @@ class Learners(object):
 
         # Update timestamp 
         progress_df['Updated At'] = NOW
+        progress_df = progress_df.sort_values(by=['Batch Code', 'Email'], ascending=True)
         
         # Students by batch and status
         by_status = pd.pivot_table(data=progress_df,
