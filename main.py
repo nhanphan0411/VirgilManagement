@@ -198,40 +198,56 @@ class Learners(object):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
         modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
+        modules = COURSE_INFO[f"{course} Modules"]
+        minicourses = COURSE_INFO[f"{course} Minicourses"]
         
         # Convert to datetime
-        pace_report['Course Start Date'] = pd.to_datetime(pace_report['Course Start Date'])
+        pace_report['Start'] = pd.to_datetime(pace_report['Start'])
+        pace_report['Finish'] = pd.to_datetime(pace_report['Finish'])
         
         # Reformat the table
         pace_report = pace_report.pivot_table(index=['Email', 'User Name', 'Tags'],
                                               columns='MiniCourse',
-                                              values='Course Start Date').reset_index()
+                                              values='Start').reset_index()
         
         
-        # Calculate consumed time (in weeks) for a learner to finish a module
-        for i in range(len(modules) - 1):
-            time_to_finish = (pace_report[modules[i+1]] - pace_report[modules[i]])
+        # Calculate consumed time (in weeks) for a learner to finish a mini-course
+        # Duration = start of latter minicourse - start of previous minicourse 
+        # Last minicourse = date of certificate - start of the last minicourse  
+        for i in range(len(minicourses)-1):
+            time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
             time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
-            pace_report[f'M{i+1} Finished In'] = time_to_finish
+            pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
+        time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
+        time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+        pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
 
+        # Calculate consumed time (in weeks) for a learner to finish a module
+        # Duration = start of latter module - start of previous module 
+        # Last module = date of certificate - start of the last module
+        first_minicourses = list(map(lambda x: x+'.1', modules))
+        for i in range(len(modules) - 1):
+            time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
+            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+            pace_report[f'Module {i+1} Finished In'] = time_to_finish
+        time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
+        time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+        pace_report[f'Module {len(modules)} Finished In'] = time_to_finish_last_module
+
+        # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['M1.1']
         pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] / pd.to_timedelta(7, 'D') + 1).apply(np.ceil)
-
         
-        def get_module_at(row, number_of_modules):
-            module_to_finish = row.isna().sum()
-            module_at = number_of_modules - module_to_finish
-            return module_at
-        
+        # Get checkpoint where learners at 
         def get_minicourse_at(row, course):
-                return COURSE_INFO[f"{course} Minicourses"][row.notna().sum()-1]
-
+            return minicourses[row.notna().sum()-1]
+        
         def get_expected_module_at(weeks, course): 
             expected_module_at = (weeks > np.array(list(COURSE_INFO[f"{course} Estimation"].values()))).sum() + 1
             return expected_module_at
         
-        pace_report['Module At'] = pace_report[modules].apply(lambda x: get_module_at(x, len(COURSE_INFO[f"{course} Modules"])), axis=1)
         pace_report['Mini-Course At'] = pace_report[COURSE_INFO[f"{course} Minicourses"]].apply(lambda x: get_minicourse_at(x, course), axis='columns')
+        pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
         pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
         pace_report['On Track'] = pace_report['Module At'] >= pace_report['Expected Module At']
 
