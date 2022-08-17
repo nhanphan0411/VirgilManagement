@@ -18,7 +18,7 @@ import zipfile
 import io
 
 import pytz
-NOW = datetime.datetime.now(pytz.timezone('Asia/Bangkok'))
+NOW = datetime.datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%y-%m-%d %H:%M:%S')
 
 
 # -----------------------------------------------------------
@@ -189,7 +189,7 @@ class Learners(object):
 
     def load_learning_pace_report(self, reports):
         """Report of how many days it takes for a learner to complete a module"""
-        pace_report = pd.concat(reports.values())[['Email', 'User Name', 'Tags', 'Course Start Date', 'MiniCourse']]
+        pace_report = pd.concat(reports.values())[['Email', 'User Name', 'Tags', 'Course Start Date', 'Date of certificate', 'MiniCourse']]
         return pace_report 
 
     def preprocess_learning_pace_report(self, pace_report, course):
