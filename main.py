@@ -62,28 +62,34 @@ class Learners(object):
     # ----- MASTER STUDENT DATA -----
     def preprocess_master_data(self, df):
         df = df[df['#'] != ''].copy(deep=True)
-        df.drop(columns=['#', 'DS Check', 'Duplicate check', 'ID', ''], inplace=True)
+        df.drop(columns=['#', 'ID', ''], inplace=True)
         df.rename(columns={'Enrollment (start) date': 'Enrollment Date'}, inplace=True)
 
         # Time related columns
         # Enrollment Date
-        df.loc[:, 'Enrollment Date'] = pd.to_datetime(df.loc[:, 'Enrollment Date'], format='%m/%d/%Y')
+        df.loc[:, 'Enrollment Date'] = pd.to_datetime(df.loc[:, 'Enrollment Date'])
         df['Enrollment Month'] = df['Enrollment Date'].dt.to_period('M')
         df['Enrollment Week Year'] = df['Enrollment Date'].dt.year.astype('str') + '-W' + df['Enrollment Date'].dt.isocalendar().week.astype('str').str.zfill(2)
         df['Week'] = df['Enrollment Date'].apply(lambda x: ((pd.Timestamp.today() - x) // pd.to_timedelta(7, 'D')) + 1)
         
         # Dropped and Postponed Date
         df.rename(columns={'Postponed/Canceled date': 'Dropout Date'}, inplace=True)
-        df.loc[:, 'Dropout Date'] = pd.to_datetime(df.loc[:, 'Dropout Date'], format='%m/%d/%Y', errors='coerce')
+        df.loc[:, 'Dropout Date'] = pd.to_datetime(df.loc[:, 'Dropout Date'], errors='coerce')
         df['Dropout Month'] = df['Dropout Date'].dt.to_period('M')
         df['Dropout Week Year'] = None
         df.loc[df['Dropout Date'].notna(), 'Dropout Week Year'] = df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.year.astype('str') + '-W' + df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.isocalendar().week.astype('str').str.zfill(2)
         df.loc[df['Dropout Week Year']=='2022-W52', 'Dropout Week Year'] = '2021-W52'
         df['Duration to Drop'] = (df['Dropout Date'] - df['Enrollment Date']).dt.days.astype('float')
 
+        # Return date and graduated date
+        df.loc[:, 'Expected return date'] = pd.to_datetime(df.loc[:, 'Expected return date'])
+        df.loc[:, 'Return Date'] = pd.to_datetime(df.loc[:, 'Return Date'])
+        df.loc[:, 'Graduated Date'] = pd.to_datetime(df.loc[:, 'Graduated Date'])
+
         # Text columns
         df.loc[:, 'Status'] = df['Status'].str.lower()
         df['Student email'] = df['Student email'].str.lower().str.strip()
+        df['Student name'] = df['Student name'].str.title().str.strip()
 
         # Batch data
         def get_batch_in_num(x):
