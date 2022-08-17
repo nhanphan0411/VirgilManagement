@@ -203,13 +203,15 @@ class Learners(object):
         
         # Convert to datetime
         pace_report['Start'] = pd.to_datetime(pace_report['Start'])
+        pace_report.loc[pace_report['Finish'] == '-', 'Finish'] = None
         pace_report['Finish'] = pd.to_datetime(pace_report['Finish'])
         
         # Reformat the table
         pace_report = pace_report.pivot_table(index=['Email', 'User Name', 'Tags'],
                                               columns='MiniCourse',
-                                              values='Start').reset_index()
+                                              values=['Start', 'Finish']).reset_index()
         
+        pace_report.columns = list(map(lambda x: x.strip("_"), pace_report.columns.get_level_values(0) + '_' +  pace_report.columns.get_level_values(1)))
         
         # Calculate consumed time (in weeks) for a learner to finish a mini-course
         # Duration = start of latter minicourse - start of previous minicourse 
