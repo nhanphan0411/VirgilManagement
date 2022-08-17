@@ -237,18 +237,18 @@ class Learners(object):
         pace_report[f'Module {len(modules)} Finished In'] = time_to_finish_last_module
 
         # Get Weeks in Course 
-        pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['M1.1']
+        pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
         pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] / pd.to_timedelta(7, 'D') + 1).apply(np.ceil)
         
         # Get checkpoint where learners at 
-        def get_minicourse_at(row, course):
+        def get_minicourse_at(row):
             return minicourses[row.notna().sum()-1]
         
         def get_expected_module_at(weeks, course): 
             expected_module_at = (weeks > np.array(list(COURSE_INFO[f"{course} Estimation"].values()))).sum() + 1
             return expected_module_at
         
-        pace_report['Mini-Course At'] = pace_report[COURSE_INFO[f"{course} Minicourses"]].apply(lambda x: get_minicourse_at(x, course), axis='columns')
+        pace_report['Mini-Course At'] = pace_report[list(map(lambda x: 'Start_'+x, minicourses))].apply(get_minicourse_at, axis='columns')
         pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
         pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
         pace_report['On Track'] = pace_report['Module At'] >= pace_report['Expected Module At']
