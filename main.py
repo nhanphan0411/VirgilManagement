@@ -165,7 +165,7 @@ class Learners(object):
         for filepath in self.get_zip_files_by_date(date):
             self.unzip_one_report(filepath)
     
-    def load_reports_by_date(self, date=date.today().strftime("%Y-%m-%d"), course_name='Web'):
+    def load_summary_reports_by_date(self, date=date.today().strftime("%Y-%m-%d"), course_name='Web'):
         """Return a JSON file with keys as Mini-Courses"""
         Logger.info(f'Get reports of {course_name} Virgil by {date}')
         filepaths = [
@@ -183,6 +183,28 @@ class Learners(object):
             for filepath in filepaths:
                 if filepath.find(module) > 0:
                     raw_report = pd.read_excel(filepath, sheet_name='Summary')
+                    raw_report['MiniCourse'] = module
+                    reports[module] = raw_report
+        return reports
+
+    def load_time_spent_reports_by_date(self, date=date.today().strftime("%Y-%m-%d"), course_name='Web'):
+        """Return a JSON file with keys as Mini-Courses"""
+        Logger.info(f'Get reports of {course_name} Virgil by {date}')
+        filepaths = [
+            os.path.join(LEARNER_SHEETS['learnworld']['url'], f)
+            for f in glob.glob(os.path.join(LEARNER_SHEETS['learnworld']['url'], self.reports_dir[course_name], '**', '*.xlsx'), recursive=True)
+                if os.path.isfile(os.path.join(LEARNER_SHEETS['learnworld']['url'], f)) and (f.find(date) > 0)
+        ]
+        if (len(filepaths) == 0):
+            Logger.error('No reports found.')
+            return []
+        else:
+            print(f'{len(filepaths)} reports found.')
+        reports = {item[1].split('/')[1]: None for item in self.lw_map_dir.items() if f'{course_name}Virgil/' in item[1]}
+        for module in reports.keys():
+            for filepath in filepaths:
+                if filepath.find(module) > 0:
+                    raw_report = pd.read_excel(filepath, sheet_name='Time Spent')
                     raw_report['MiniCourse'] = module
                     reports[module] = raw_report
         return reports
