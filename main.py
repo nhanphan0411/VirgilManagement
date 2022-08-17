@@ -190,6 +190,8 @@ class Learners(object):
     def load_learning_pace_report(self, reports):
         """Report of how many days it takes for a learner to complete a module"""
         pace_report = pd.concat(reports.values())[['Email', 'User Name', 'Tags', 'Course Start Date', 'Date of certificate', 'MiniCourse']]
+        pace_report.rename(columns={'Course Start Date': 'Start', 
+                                    'Date of certificate': 'Finish'}, inplace=True)
         return pace_report 
 
     def preprocess_learning_pace_report(self, pace_report, course):
