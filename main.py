@@ -317,7 +317,7 @@ class Learners(object):
         progress_df = progress_df[progress_df['Status']!='to be enrolled']
 
         # Correct graduated learners
-        progress_df.loc[(progress_df['Expected Module At'] > len(COURSE_INFO[f'{course} Modules'])) & (progress_df['Status'] == 'graduated'), 'On Track'] = True 
+        progress_df.loc[(progress_df['Status'] == 'graduated'), 'On Track'] = True 
 
         # Update timestamp 
         progress_df['Updated At'] = NOW
@@ -360,6 +360,8 @@ class Learners(object):
             Logger.success(f'Successfully wrote {course} student progress pivot data')
 
         return progress_df, by_batch
+
+    
 
 # -----------------------------------------------------------
 #  Mentor Sessions
