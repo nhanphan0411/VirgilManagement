@@ -70,7 +70,7 @@ class Learners(object):
         df.loc[:, 'Enrollment Date'] = pd.to_datetime(df.loc[:, 'Enrollment Date'])
         df['Enrollment Month'] = df['Enrollment Date'].dt.to_period('M')
         df['Enrollment Week Year'] = df['Enrollment Date'].dt.year.astype('str') + '-W' + df['Enrollment Date'].dt.isocalendar().week.astype('str').str.zfill(2)
-        df['Week'] = df['Enrollment Date'].apply(lambda x: ((pd.Timestamp.today() - x) // pd.to_timedelta(7, 'D')) + 1)
+        df['Week'] = df['Enrollment Date'].apply(lambda x: ((pd.Timestamp.today() - x) // pd.to_timedelta(7, 'D'))).apply(np.ceil)
         
         # Dropped and Postponed Date
         df.rename(columns={'Postponed/Canceled date': 'Dropout Date'}, inplace=True)
