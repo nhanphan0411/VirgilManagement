@@ -275,15 +275,15 @@ class Learners(object):
         first_minicourses = list(map(lambda x: x+'.1', modules))
         for i in range(len(modules) - 1):
             time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
-            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'Module {i+1} Finished In'] = time_to_finish
         time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
-        time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+        time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
         pace_report[f'Module {len(modules)} Finished In'] = time_to_finish_last_module
 
         # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
-        pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] / pd.to_timedelta(7, 'D') + 1).apply(np.ceil)
+        pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] / pd.to_timedelta(7, 'D')).apply(np.ceil)
         
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
