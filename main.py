@@ -62,7 +62,7 @@ class Learners(object):
     # ----- MASTER STUDENT DATA -----
     def preprocess_master_data(self, df):
         df = df[df['x'] != ''].copy(deep=True)
-        df.drop(columns=['x', 'ID', ''], inplace=True)
+        df.drop(columns=['x', 'ID'], inplace=True)
         df.rename(columns={'Enrollment (start) date': 'Enrollment Date'}, inplace=True)
 
         # Time related columns
