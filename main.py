@@ -304,25 +304,23 @@ class Learners(object):
     # ----- COMBINE LW AND MASTER -----
     def update_progress_report(self, student_master_df, learning_pace_report, course, save=False):
         course_code = {'Web': 'FTW', 'DS': 'DS'}
+        student_master_df = student_master_df[student_master_df['Status']!='to be enrolled']
         students_by_course_df = student_master_df[student_master_df['Class']==course_code[course]]
         progress_df = pd.merge(left=learning_pace_report, 
                             right=students_by_course_df[['Student email', 'Status', 'Student name', 
-                                                         'Batch Code', 'Batch', 'Duration to Drop']],
+                                                         'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
                             left_on='Email',
                             how='right',
-                            right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 
+                            right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
                                                                                             'Status', 'Batch Code', 'Batch', 
                                                                                             'Duration to Drop'] + list(learning_pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
         
-        # Student progress would not take into consideration of To Be Enrolled students
-        progress_df = progress_df[progress_df['Status']!='to be enrolled']
-
         # Correct graduated learners
         progress_df.loc[(progress_df['Status'] == 'graduated'), 'On Track'] = True 
 
         # Update timestamp 
         progress_df['Updated At'] = NOW
-        progress_df = progress_df.sort_values(by=['Batch Code', 'Email'], ascending=True)
+        progress_df = progress_df.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)
         
         # Students by batch and status
         by_status = pd.pivot_table(data=progress_df,
