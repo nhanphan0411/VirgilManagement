@@ -65,6 +65,11 @@ class Learners(object):
         df.drop(columns=['x', 'ID'], inplace=True)
         df.rename(columns={'Enrollment (start) date': 'Enrollment Date'}, inplace=True)
 
+        # Text columns
+        df.loc[:, 'Status'] = df['Status'].str.lower()
+        df['Student email'] = df['Student email'].str.lower().str.strip()
+        df['Student name'] = df['Student name'].str.title().str.strip()
+
         # Time related columns
         # Enrollment Date
         df.loc[:, 'Enrollment Date'] = pd.to_datetime(df.loc[:, 'Enrollment Date'])
@@ -79,17 +84,13 @@ class Learners(object):
         df['Dropout Week Year'] = None
         df.loc[df['Dropout Date'].notna(), 'Dropout Week Year'] = df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.year.astype('str') + '-W' + df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.isocalendar().week.astype('str').str.zfill(2)
         df.loc[df['Dropout Week Year']=='2022-W52', 'Dropout Week Year'] = '2021-W52'
-        df['Duration to Drop'] = (df['Dropout Date'] - df['Enrollment Date']).dt.days.astype('float')
+        df.loc[:, 'Duration to Drop'] = None
+        df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Duration to Drop'] = (df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Dropout Date'] - df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Enrollment Date']).dt.days.astype('float')
 
         # Return date and graduated date
         df.loc[:, 'Expected return date'] = pd.to_datetime(df.loc[:, 'Expected return date'])
         df.loc[:, 'Return Date'] = pd.to_datetime(df.loc[:, 'Return Date'])
         df.loc[:, 'Graduated Date'] = pd.to_datetime(df.loc[:, 'Graduated Date'])
-
-        # Text columns
-        df.loc[:, 'Status'] = df['Status'].str.lower()
-        df['Student email'] = df['Student email'].str.lower().str.strip()
-        df['Student name'] = df['Student name'].str.title().str.strip()
 
         # Batch data
         def get_batch_in_num(x):
