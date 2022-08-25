@@ -85,8 +85,9 @@ class Learners(object):
         df.loc[df['Dropout Date'].notna(), 'Dropout Week Year'] = df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.year.astype('str') + '-W' + df.loc[df['Dropout Date'].notna(), 'Dropout Date'].dt.isocalendar().week.astype('str').str.zfill(2)
         df.loc[df['Dropout Week Year']=='2022-W52', 'Dropout Week Year'] = '2021-W52'
         df.loc[:, 'Duration to Drop'] = None
-        df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Duration to Drop'] = (df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Dropout Date'] - df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Enrollment Date']).dt.days.astype('float')
-
+        df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Duration to Drop'] = (df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Dropout Date'] - df.loc[(df['Status'].isin(['dropped', 'postponed'])), 'Enrollment Date']).dt.days
+        df.loc[:, 'Duration to Drop'] = df.loc[:, 'Duration to Drop'].astype('float')
+        
         # Return date and graduated date
         df.loc[:, 'Expected return date'] = pd.to_datetime(df.loc[:, 'Expected return date'])
         df.loc[:, 'Return Date'] = pd.to_datetime(df.loc[:, 'Return Date'])
