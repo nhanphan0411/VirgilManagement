@@ -119,6 +119,7 @@ class Learners(object):
     
 
     # ----- LEARNWORLD DATA -----
+    # ----- Unzip and load raw reports -----
     def get_zip_files_by_date(self, date=date.today().strftime("%d %b %Y")):
         print(f'Get zip files by {date}')
         zip_files = [
@@ -233,6 +234,7 @@ class Learners(object):
                     reports[module] = raw_report
         return reports
 
+    # ----- Preprocess raw reports: Users Data -----
 
     def load_learning_pace_report(self, reports):
         """Report of how many days it takes for a learner to complete a module"""
@@ -302,7 +304,7 @@ class Learners(object):
 
         return pace_report
 
-    # ----- COMBINE LW AND MASTER -----
+    # ----- Combine Users Report with Master Data -----
     def update_progress_report(self, student_master_df, learning_pace_report, course, save=False):
         course_code = {'Web': 'FTW', 'DS': 'DS'}
         student_master_df = student_master_df[student_master_df['Status']!='to be enrolled']
@@ -360,8 +362,98 @@ class Learners(object):
             Logger.success(f'Successfully wrote {course} student progress pivot data')
 
         return progress_df, by_batch
-
     
+    # ------- Preprocess LW Progress Report in Detail --------
+    def get_check_report(self, reports, pace_report):
+        """Preprocess one raw progress report and merge with LW summary report
+           to get the data of the minicourse the learner is at only.
+        """
+
+        df = reports.drop(columns='Started/Completed')
+        df = df.reset_index().rename(columns={'index': 'Activity ID'})
+        df.dropna(subset=['Type'], inplace=True)
+        df = df.melt(id_vars=['Activity ID', 'Learning Activity', 'Type', 'MiniCourse'],
+                value_vars=df.columns[2:-1],
+                var_name = 'Email',
+                value_name = 'Check')
+        df['Email'] = df['Email'].apply(lambda x: x.split("-")[1]).str.strip()
+
+        active_df = pace_report[pace_report['Status'] == 'active']
+        active_learners = (active_df['Email']+active_df['Mini-Course At']).unique()
+        df['key'] = df['Email']+df['MiniCourse']
+        df = df[df['key'].isin(active_learners)]
+        df = df.drop(columns='key')
+        return df
+
+    def get_processed_check_report(self, reports_dict, pace_report):
+        """Loop through and preprocess all the reports"""
+        df = pd.DataFrame(columns=["Activity ID",
+                                "Learning Activity",
+                                "Type",
+                                "MiniCourse",
+                                "Student Email",
+                                "Check"])
+        for report in reports_dict.values():
+            processed_report = self.get_check_report(report, pace_report)
+            df = pd.concat([df, processed_report])
+        
+        return df
+
+    def get_time_report(self, reports, pace_report): 
+        """One LW report includes one check sheet and one time sheet.
+           Function to preprocess one time sheet to time series format"""
+        df = reports.drop(columns='Average Time Spent (For filtered users)')
+        df = df.reset_index().rename(columns={'index': 'Activity ID',
+                                              'Average Time Spent (For all users)': 'Average Time Spent'})
+        df.dropna(subset=['Type'], inplace=True)
+        df = df.melt(id_vars=['Activity ID', 'Learning Activity', 'Type', 'Estimated Duration', 'Average Time Spent', 'MiniCourse'],
+                value_vars=df.columns[4:-1],
+                var_name = 'Email',
+                value_name = 'Time Spent')
+        df['Email'] = df['Email'].apply(lambda x: x.split("-")[1]).str.strip()
+        df.loc[df['Estimated Duration'] == '-', 'Estimated Duration'] = None
+        df.loc[df['Average Time Spent'] == '-', 'Average Time Spent'] = None
+        df.loc[df['Time Spent'] == '-', 'Time Spent'] = None
+
+        # Convert to minutes
+        def to_minutes(x):
+            if x in ['nan', 'None']:
+                return None
+            else:
+                hours = int(x[:2])
+                minutes = int(x[3:5])
+                return hours*60+minutes
+
+        df['Estimated Duration'] = df['Estimated Duration'].astype(str).apply(to_minutes)
+        df['Average Time Spent'] = df['Average Time Spent'].astype(str).apply(to_minutes)
+        df['Time Spent'] = df['Time Spent'].astype(str).apply(to_minutes)
+
+        df.loc[df['Type'] != 'Video', 'Estimated Duration'] = None
+        df.loc[df['Type'] != 'Video', 'Time Spent'] = None
+
+        active_df = pace_report[pace_report['Status'] == 'active']
+        active_learners = (active_df['Email']+active_df['Mini-Course At']).unique()
+        df['key'] = df['Email']+df['MiniCourse']
+        df = df[df['key'].isin(active_learners)]
+        df = df.drop(columns='key')
+
+        return df
+
+    def get_processed_time_report(self, reports_dict, pace_report):
+        """Function to preprocess all the time reports from LW"""
+        df = pd.DataFrame(columns=["Activity ID",
+                                "Learning Activity",
+                                "Type",
+                                "Estimated Duration",
+                                "Average Time Spent",
+                                "MiniCourse",
+                                "Email",
+                                "Time Spent"])
+        for report in reports_dict.values():
+            processed_report = self.get_time_report(report, pace_report)
+            df = pd.concat([df, processed_report])
+        
+        return df
 
 # -----------------------------------------------------------
 #  Mentor Sessions
