@@ -491,10 +491,15 @@ class MentorSessions():
         df.loc[84, 'Session Timestamp'] = '22/07/2022'
         
         df['Session Timestamp'] = pd.to_datetime(df['Session Timestamp'])
+        df['Session Timestamp Absent'] = pd.to_datetime(df['Session Timestamp Absent'])
+
+        df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp'] = df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp Absent']
         df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp']
+        df.drop(columns='Session Timestamp Absent', inplace=True)
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
         df['Session Week'] = df['Session Week'].astype('int')
-        
+        df['Session Year Month'] = df['Session Timestamp'].to_period('M')
+                
         # Text Columns
         df['Mentor email'] = df['Mentor email'].str.lower().str.strip()
         df['Mentee email'] = df['Mentee email'].str.lower().str.strip()
