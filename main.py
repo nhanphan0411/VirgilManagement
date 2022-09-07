@@ -492,10 +492,10 @@ class MentorSessions():
         
         df['Session Timestamp'] = pd.to_datetime(df['Session Timestamp'])
         df['Session Timestamp Absent'] = pd.to_datetime(df['Session Timestamp Absent'])
-
         df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp'] = df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp Absent']
         df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp']
         df.drop(columns='Session Timestamp Absent', inplace=True)
+        df.loc[df['Session Timestamp'].dt.year < 2022, 'Session Timestamp'] = df.loc[df['Session Timestamp'].dt.year < 2022, 'Recapped Timestamp']
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
         df['Session Week'] = df['Session Week'].astype('int')
         df['Session Year Month'] = df['Session Timestamp'].dt.to_period('M')
@@ -558,7 +558,7 @@ class Utils:
             Logger.error(e)
             return None
 
-    def save_gspread(df, sheet_url, worksheet_name):
+    def save_gspread(df, sheet_url, worksheet_name, clear_sheet=False):
         global gc
         try:
             worksheet = gc.open_by_url(sheet_url).worksheet(worksheet_name)
@@ -566,6 +566,8 @@ class Utils:
                 Logger.error(f'Worksheet {worksheet_name} not found in {sheet_url}')
                 return False
             else:
+                if clear_sheet==True:
+                    worksheet.clear()
                 set_with_dataframe(worksheet, df)
                 Logger.success('Data saved')
                 return True
