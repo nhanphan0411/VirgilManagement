@@ -498,7 +498,7 @@ class MentorSessions():
         df.drop(columns='Session Timestamp Absent', inplace=True)
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
         df['Session Week'] = df['Session Week'].astype('int')
-        df['Session Year Month'] = df['Session Timestamp'].to_period('M')
+        df['Session Year Month'] = df['Session Timestamp'].dt.to_period('M')
                 
         # Text Columns
         df['Mentor email'] = df['Mentor email'].str.lower().str.strip()
