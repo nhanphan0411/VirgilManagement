@@ -647,6 +647,8 @@ class MentorSessions():
                       right=raw_schedule_df[['Student name', 'Student email', 'Mentor email', 'Mentor name']],
                       on='Student email',
                       how='left')[['Student name', 'Student email', 'Class', 'Enrollment Date', 4, 3, 2, 1, 0, 'Mentor name', 'Mentor email']]
+        
+        df.dropna(subset='Student name', inplace=True)
         df['Updated at'] = NOW
 
         if save == True:
@@ -667,7 +669,7 @@ class MentorSessions():
         raw_recaps_df = self.load_and_preprocess_raw_recaps_data()
         processed_recaps_df = self.load_processed_recaps()
         processed_schedule_df = self.load_processed_schedule()
-        unfit_recaps_df = self.load_unfit_recaps()
+        # unfit_recaps_df = self.load_unfit_recaps()
 
         # ------ Filter Schedule ------
         active_students = learner_master_df[learner_master_df['Status']=='active']['Student email'].unique()
