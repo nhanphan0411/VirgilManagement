@@ -651,8 +651,8 @@ class MentorSessions():
 
         if save == True:
             Utils.save_gspread(df,
-                            self.learner_alert_dict['learner_alert']['url'],
-                            self.learner_alert_dict['learner_alert']['worksheet_name'],
+                            self.learner_alert_dict['url'],
+                            self.learner_alert_dict['worksheet_name'],
                             clear_sheet=True)
 
         return df
@@ -684,8 +684,8 @@ class MentorSessions():
             processed_schedule_df.drop_duplicates(inplace=True)
             processed_schedule_df['Report Week'] = processed_schedule_df['Report Week'].astype(int)
             Utils.save_gspread(processed_schedule_df,
-                            self.processed_schedule_dict['processed_schedule']['url'],
-                            self.processed_schedule_dict['processed_schedule']['worksheet_name'])
+                            self.processed_schedule_dict['url'],
+                            self.processed_schedule_dict['worksheet_name'])
         
         # ------ Match recap ------
         recap_journal = pd.merge(left=processed_schedule_df,
@@ -698,8 +698,8 @@ class MentorSessions():
         recap_journal.loc[recap_journal['Recapped Timestamp'].isna(), 'Recapped'] = 0
         recap_journal['Updated at'] = datetime.datetime.today().strftime("%y-%m-%d %H:%M")
         Utils.save_gspread(recap_journal,
-                        self.processed_recaps_dict['processed_recaps']['url'],
-                        self.processed_recaps_dict['processed_recaps']['worksheet_name'])
+                        self.processed_recaps_dict['url'],
+                        self.processed_recaps_dict['worksheet_name'])
         
         # ------ Filter unfit recaps ------
         processed_schedule_df['match'] = processed_schedule_df['Mentor email'] + processed_schedule_df['Mentee email']
@@ -708,8 +708,8 @@ class MentorSessions():
         wrong_input['Updated at'] = NOW
 
         Utils.save_gspread(wrong_input,
-                        self.unfit_recaps_dict['unfit_recaps']['url'],
-                        self.unfit_recaps_dict['unfit_recaps']['worksheet_name'])
+                        self.unfit_recaps_dict['url'],
+                        self.unfit_recaps_dict['worksheet_name'])
         
         # ------ Compute alert learners ------
         raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']
@@ -723,7 +723,7 @@ class MentorSessions():
 class Logger:
     @staticmethod
     def error(msg):
-        print(colored('ERROR: ' + msg, color='red', attrs=['bold']))
+        print(colored('ERROR: ' + str(msg), color='red', attrs=['bold']))
 
     @staticmethod
     def success(msg):
