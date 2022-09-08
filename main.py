@@ -648,7 +648,7 @@ class MentorSessions():
                       on='Student email',
                       how='left')[['Student name', 'Student email', 'Class', 'Enrollment Date', 4, 3, 2, 1, 0, 'Mentor name', 'Mentor email']]
         
-        df.dropna(subset='Student name', inplace=True)
+        df.dropna(subset=['Student name'], inplace=True)
         df['Updated at'] = NOW
 
         if save == True:
