@@ -667,6 +667,7 @@ class MentorSessions():
         raw_recaps_df = self.load_and_preprocess_raw_recaps_data()
         processed_recaps_df = self.load_processed_recaps()
         processed_schedule_df = self.load_processed_schedule()
+        unfit_recaps_df = self.load_unfit_recaps()
 
         # ------ Filter Schedule ------
         active_students = learner_master_df[learner_master_df['Status']=='active']['Student email'].unique()
@@ -703,10 +704,10 @@ class MentorSessions():
         
         # ------ Filter unfit recaps ------
         processed_schedule_df['match'] = processed_schedule_df['Mentor email'] + processed_schedule_df['Mentee email']
-        processed_recaps_df['match'] = processed_recaps_df['Mentor email'] + processed_recaps_df['Mentee email']
-        wrong_input = processed_recaps_df[~processed_recaps_df['match'].isin(processed_schedule_df['match'].unique())].drop(columns='match')
+        raw_recaps_df['match'] = raw_recaps_df['Mentor email'] + raw_recaps_df['Mentee email']
+        wrong_input = raw_recaps_df[~raw_recaps_df['match'].isin(processed_schedule_df['match'].unique())].drop(columns='match')
         wrong_input['Updated at'] = NOW
-
+        raw_recaps_df.drop(columns='match', inplace=True)
         Utils.save_gspread(wrong_input,
                         self.unfit_recaps_dict['url'],
                         self.unfit_recaps_dict['worksheet_name'],
