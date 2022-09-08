@@ -20,6 +20,69 @@ import io
 import pytz
 NOW = datetime.datetime.now(pytz.timezone('Asia/Bangkok')).strftime('%y-%m-%d %H:%M:%S')
 
+# -----------------------------------------------------------
+#  SHEETS MANAGEMENT
+# -----------------------------------------------------------
+LEARNER_SHEETS = {
+    'master': {
+        'url': 'https://docs.google.com/spreadsheets/d/1vmZZ6m0UI_sxnxpJ8wuc-M6ccu6qE5nd1kLj1Z64VUY/edit#gid=525468601',
+        'worksheet_name': 'All students',
+        'columns_row': 0},
+
+    'learnworld': {
+        'url': "/content/drive/MyDrive/CoderSchool/PlatformEngineer/VirgilManagement/Data/LWReports",
+        'worksheet_name': None,
+        'columns_row': None}
+        }
+
+MENTOR_SHEETS = None 
+
+SESSION_SHEETS = {
+    
+    'raw_schedule': {
+        'url': 'https://docs.google.com/spreadsheets/d/1vmZZ6m0UI_sxnxpJ8wuc-M6ccu6qE5nd1kLj1Z64VUY/edit#gid=525468601',
+        'worksheet_name': 'Mentor_sessions_All',
+        'columns_row': 0
+    },
+    
+    'raw_recaps': {
+        'url': 'https://docs.google.com/spreadsheets/d/1Uf9yzsy3mA_QeF0h3TI6ZlwXFL_SP6ec9NN80ZlyhJE/edit#gid=1362073476',
+        'worksheet_name': 'Mentor Claim Your Session Response',
+        'columns_row': 0},
+
+    'processed_recaps': {
+        'url': 'https://docs.google.com/spreadsheets/d/1leOO3tvIoyF5uoFr0VZwel1CbQWFKI7GudW6Hir4VwM/edit#gid=574324779',
+        'worksheet_name': 'Recap',
+        'columns_row': 0
+    },
+
+    'processed_schedule': {
+        'url': 'https://docs.google.com/spreadsheets/d/1leOO3tvIoyF5uoFr0VZwel1CbQWFKI7GudW6Hir4VwM/edit#gid=574324779',
+        'worksheet_name': 'Schedule',
+        'columns_row': 0},
+    
+    'unfit_recaps': {
+        'url': 'https://docs.google.com/spreadsheets/d/1leOO3tvIoyF5uoFr0VZwel1CbQWFKI7GudW6Hir4VwM/edit#gid=574324779',
+        'worksheet_name': 'Wrong Input',
+        'columns_row': 0},
+    
+    'learner_alert': {
+        'url': 'https://docs.google.com/spreadsheets/d/1leOO3tvIoyF5uoFr0VZwel1CbQWFKI7GudW6Hir4VwM/edit#gid=300155068',
+        'worksheet_name': 'Learner Alert',
+        'columns_row': 0},
+}
+
+# Estimation in cumsum
+COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3'],
+               "Web Minicourses": ['M1.1', 'M1.2', 'M1.3', 'M1.4', 'M2.1', 'M2.2', 'M2.3', 'M3.1', 'M3.2', 'M3.3'],
+               "Web Estimation": {'M1': 10, 'M2': 16, 'M3': 24},
+               "DS Modules": ['M1', 'M2', 'M3', 'M4'],
+               "DS Minicourses": ['M1.1', 'M1.2', 'M2.1', 'M2.2', 'M3.1', 'M3.2', 'M4.1', 'M4.2', 'M5.1'],
+               "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 18, 'M5': 24}
+               }
+
+STAFF_EMAILS = ['hieu.n.pham1210@gmail.com', 'lehoangchauanh@gmail.com']
+
 
 # -----------------------------------------------------------
 #  Learners
@@ -460,16 +523,19 @@ class Learners(object):
 # -----------------------------------------------------------
 
 class MentorSessions():
-    def __init__(self, sheets_dict):
+    def __init__(self):
         """Each data frame input is defined by a dictionary of url, worksheet name,
            and columns_row"""
-        self.raw_schedule_dict = sheets_dict['raw_schedule']
-        self.raw_recaps_dict = sheets_dict['raw_recaps']
-        self.processed_recaps_dict = sheets_dict['processed_recaps']
-        self.processed_schedule_dict = sheets_dict['processed_schedule']
-        self.unfit_recaps_dict = sheets_dict['unfit_recaps']
+        self.raw_schedule_dict = SESSION_SHEETS['raw_schedule']
+        self.raw_recaps_dict = SESSION_SHEETS['raw_recaps']
+        self.processed_recaps_dict = SESSION_SHEETS['processed_recaps']
+        self.processed_schedule_dict = SESSION_SHEETS['processed_schedule']
+        self.unfit_recaps_dict = SESSION_SHEETS['unfit_recaps']
+        self.learner_alert_dict = SESSION_SHEETS['learner_alert']
 
+    # ------- DATA WRANGLING ------
     def preprocess_raw_schedule_data(self, df):
+        df['Student name'] = df['Student name'].str.title().str.strip()
         df['Student email'] = df['Student email'].str.lower().str.strip()
         df['Mentor email'] = df['Mentor email'].str.lower().str.strip()
         return df
@@ -492,10 +558,17 @@ class MentorSessions():
         
         df['Session Timestamp'] = pd.to_datetime(df['Session Timestamp'])
         df['Session Timestamp Absent'] = pd.to_datetime(df['Session Timestamp Absent'])
+        
+        # Fillna for Session without Timestamp + Combine two Session at columns
         df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp'] = df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp Absent']
         df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp']
         df.drop(columns='Session Timestamp Absent', inplace=True)
+
+        # Correct Session with inlogical Session timestamp
+        df.loc[df['Session Timestamp'] > pd.to_datetime(NOW), 'Session Timestamp']  = df.loc[df['Session Timestamp'] > pd.to_datetime(NOW), 'Recapped Timestamp']
         df.loc[df['Session Timestamp'].dt.year < 2022, 'Session Timestamp'] = df.loc[df['Session Timestamp'].dt.year < 2022, 'Recapped Timestamp']
+        
+        # Extract Week and Year Month
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
         df['Session Week'] = df['Session Week'].astype('int')
         df['Session Year Month'] = df['Session Timestamp'].dt.to_period('M')
@@ -523,6 +596,126 @@ class MentorSessions():
         df = Utils.load_gspread(*self.unfit_recaps_dict.values())
         return df
 
+    # ------ DATA ANALYSIS ------
+    def compute_alert_learners(self, recap_df, raw_schedule_df, learner_master_df, save=False):
+        """ Function to process raw recap and return
+            A check report of learners who missed sessions in the last two consecutive weeks.
+            2 ⎯ Session happened and was recapped.
+            1 ⎯ Session did not happen and was recapped.
+            0 ⎯ Session was not recapped.
+        """
+        # Pivot student
+        learner_recap_pivot = pd.pivot_table(data=recap_df[recap_df['Mentee email'].isin(learner_master_df[learner_master_df['Status'] == 'active']['Student email'].unique())],
+                    columns='Session Week',
+                    index='Mentee email',
+                    values='Recapped Timestamp',
+                    aggfunc=len).fillna(0)
+
+        # Turn it to one hot encode :  2-YES, 0-NO
+        learner_recap_pivot[learner_recap_pivot>0] = 2
+        learner_recap_pivot = learner_recap_pivot.iloc[:, -5:]
+
+        # Get data of absent session but were recapped
+        learner_absent_pivot = pd.pivot_table(data=recap_df[(recap_df['Mentee email'].isin(learner_master_df[learner_master_df['Status'] == 'active']['Student email'].unique())) & (recap_df['On-time'] == 'Absent')],
+                                            columns='Session Week',
+                                            index='Mentee email',
+                                            values='Recapped Timestamp',
+                                            aggfunc=len).fillna(0)
+
+        learner_absent_pivot[learner_absent_pivot>0] = 1
+        learner_absent_pivot = learner_absent_pivot.iloc[:, -5:]
+
+        # Combine to get final recap check report
+        learner_recap_pivot.loc[learner_recap_pivot.index.isin(learner_absent_pivot.index), :] = learner_recap_pivot.loc[learner_recap_pivot.index.isin(learner_absent_pivot.index), :] - learner_absent_pivot
+        learner_recap_pivot.columns=[4, 3, 2, 1, 0]
+
+        # Students who missed 2 recent mentor sessions
+        df = learner_recap_pivot[(learner_recap_pivot[1] < 2) & (learner_recap_pivot[2] < 2)]
+        df = df.reset_index()
+
+        # Merge with master data 
+        df = pd.merge(left=df,
+                right=learner_master_df[['Student email', 'Class', 'Enrollment Date', 'Week']],
+                left_on='Mentee email',
+                right_on='Student email').drop(columns = 'Mentee email')
+
+        # Ignore student who enrolled two weeks ago or less
+        df = df[df['Week'] > 2].sort_values(by=['Class', 0, 1, 2, 3, 4])
+
+        # Look up for mentee latest mentor
+        df = pd.merge(left=df,
+                      right=raw_schedule_df[['Student name', 'Student email', 'Mentor email', 'Mentor name']],
+                      on='Student email',
+                      how='left')[['Student name', 'Student email', 'Class', 'Enrollment Date', 4, 3, 2, 1, 0, 'Mentor name', 'Mentor email']]
+        df['Updated at'] = NOW
+
+        if save == True:
+            Utils.save_gspread(df,
+                            self.learner_alert_dict['learner_alert']['url'],
+                            self.learner_alert_dict['learner_alert']['worksheet_name'],
+                            clear_sheet=True)
+
+        return df
+
+    def match_recap_and_compute_alert_learners(self, learner_master_df):
+        """ To match raw recap with pre-assigned schedule
+            Input: master dataframe of learners with columns of Status, Student email, and Dropout Date
+            Return: Write computed data (Matched recaps + Unfit recaps + Alert learners) to Recap Summary
+            https://docs.google.com/spreadsheets/d/1leOO3tvIoyF5uoFr0VZwel1CbQWFKI7GudW6Hir4VwM/edit#gid=1574991573
+        """
+        raw_schedule_df = self.load_and_preprocess_raw_schedule_data()
+        raw_recaps_df = self.load_and_preprocess_raw_recaps_data()
+        processed_recaps_df = self.load_processed_recaps()
+        processed_schedule_df = self.load_processed_schedule()
+
+        # ------ Filter Schedule ------
+        active_students = learner_master_df[learner_master_df['Status']=='active']['Student email'].unique()
+        raw_schedule_df = raw_schedule_df[(raw_schedule_df['Schedule Status'] == 'Confirm') & (raw_schedule_df['Confirm Time'] != '') & (raw_schedule_df['Student email'].isin(active_students))]
+        raw_schedule_df = raw_schedule_df[['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']].reset_index(drop=True)
+        raw_schedule_df.columns = ['Mentee name', 'Mentee email', 'Mentor name', 'Mentor email', 'Type']
+        raw_schedule_df['Report Week'] = datetime.date.today().isocalendar()[1]
+
+        # ------ Update schedule ------
+        # If today is Monday → Create new blank schedule
+        dow = datetime.datetime.today().weekday()
+        # On Monday, update the new schedule 
+        if dow == 0:
+            processed_schedule_df = pd.concat([processed_schedule_df, raw_schedule_df.drop(columns='Mentor name', inplace=True)], axis=0)
+            processed_schedule_df.drop_duplicates(inplace=True)
+            processed_schedule_df['Report Week'] = processed_schedule_df['Report Week'].astype(int)
+            Utils.save_gspread(processed_schedule_df,
+                            self.processed_schedule_dict['processed_schedule']['url'],
+                            self.processed_schedule_dict['processed_schedule']['worksheet_name'])
+        
+        # ------ Match recap ------
+        recap_journal = pd.merge(left=processed_schedule_df,
+                                 right=raw_recaps_df,
+                                 left_on=['Mentee email', 'Mentor email', 'Report Week'],
+                                 right_on=['Mentee email', 'Mentor email', 'Session Week'],
+                                 how='left')
+
+        recap_journal['Recapped'] = 1
+        recap_journal.loc[recap_journal['Recapped Timestamp'].isna(), 'Recapped'] = 0
+        recap_journal['Updated at'] = datetime.datetime.today().strftime("%y-%m-%d %H:%M")
+        Utils.save_gspread(recap_journal,
+                        self.preprocess_recaps['processed_recaps']['url'],
+                        self.preprocess_recaps['processed_recaps']['worksheet_name'])
+        
+        # ------ Filter unfit recaps ------
+        processed_schedule_df['match'] = processed_schedule_df['Mentor email'] + processed_schedule_df['Mentee email']
+        processed_recaps_df['match'] = processed_recaps_df['Mentor email'] + processed_recaps_df['Mentee email']
+        wrong_input = processed_recaps_df[~processed_recaps_df['match'].isin(processed_schedule_df['match'].unique())].drop(columns='match')
+        wrong_input['Updated at'] = NOW
+
+        Utils.save_gspread(wrong_input,
+                        self.unfit_recaps['unfit_recaps']['url'],
+                        self.unfit_recaps['unfit_recaps']['worksheet_name'])
+        
+        # ------ Compute alert learners ------
+        raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']
+        alert_learners = self.compute_alert_learners(raw_recaps_df, raw_schedule_df, learner_master_df, save=True)
+
+        return recap_journal, wrong_input, alert_learners
 # -----------------------------------------------------------
 #  Utils 
 # -----------------------------------------------------------
