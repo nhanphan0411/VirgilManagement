@@ -698,8 +698,8 @@ class MentorSessions():
         recap_journal.loc[recap_journal['Recapped Timestamp'].isna(), 'Recapped'] = 0
         recap_journal['Updated at'] = datetime.datetime.today().strftime("%y-%m-%d %H:%M")
         Utils.save_gspread(recap_journal,
-                        self.preprocess_recaps['processed_recaps']['url'],
-                        self.preprocess_recaps['processed_recaps']['worksheet_name'])
+                        self.processed_recaps_dict['processed_recaps']['url'],
+                        self.processed_recaps_dict['processed_recaps']['worksheet_name'])
         
         # ------ Filter unfit recaps ------
         processed_schedule_df['match'] = processed_schedule_df['Mentor email'] + processed_schedule_df['Mentee email']
@@ -708,8 +708,8 @@ class MentorSessions():
         wrong_input['Updated at'] = NOW
 
         Utils.save_gspread(wrong_input,
-                        self.unfit_recaps['unfit_recaps']['url'],
-                        self.unfit_recaps['unfit_recaps']['worksheet_name'])
+                        self.unfit_recaps_dict['unfit_recaps']['url'],
+                        self.unfit_recaps_dict['unfit_recaps']['worksheet_name'])
         
         # ------ Compute alert learners ------
         raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']
