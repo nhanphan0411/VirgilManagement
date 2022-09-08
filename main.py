@@ -712,7 +712,7 @@ class MentorSessions():
                         self.unfit_recaps_dict['worksheet_name'])
         
         # ------ Compute alert learners ------
-        raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']
+        raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type', 'Report Week']
         alert_learners = self.compute_alert_learners(raw_recaps_df, raw_schedule_df, learner_master_df, save=True)
 
         return recap_journal, wrong_input, alert_learners
