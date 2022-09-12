@@ -561,7 +561,7 @@ class MentorSessions():
         
         # Fillna for Session without Timestamp + Combine two Session at columns
         df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp'] = df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp Absent']
-        df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp'].dt.date
+        # df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp'].dt.date
         df.drop(columns='Session Timestamp Absent', inplace=True)
 
         # Correct Session with inlogical Session timestamp
@@ -570,7 +570,7 @@ class MentorSessions():
         
         # Extract Week and Year Month
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
-        df['Session Week'] = df['Session Week'].astype('int')
+        # df['Session Week'] = df['Session Week'].astype('int')
         df['Session Year Month'] = df['Session Timestamp'].dt.to_period('M')
                 
         # Text Columns
