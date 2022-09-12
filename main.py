@@ -555,19 +555,19 @@ class MentorSessions():
         # Time Series
         df['Recapped Timestamp'] = pd.to_datetime(df['Recapped Timestamp'])
         df.loc[84, 'Session Timestamp'] = '22/07/2022'
-        
-        df['Session Timestamp'] = pd.to_datetime(df['Session Timestamp'])
-        df['Session Timestamp Absent'] = pd.to_datetime(df['Session Timestamp Absent'])
-        
+
+        df['Session Timestamp'] = pd.to_datetime(df['Session Timestamp'], yearfirst=True)
+        df['Session Timestamp Absent'] = pd.to_datetime(df['Session Timestamp Absent'], yearfirst=True)
+
         # Fillna for Session without Timestamp + Combine two Session at columns
         df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp'] = df.loc[df['Session Timestamp Absent'].notna(), 'Session Timestamp Absent']
-        # df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp'].dt.date
+        df.loc[df['Session Timestamp'].isna(), 'Session Timestamp'] = df.loc[df['Session Timestamp'].isna(), 'Recapped Timestamp'].dt.date
         df.drop(columns='Session Timestamp Absent', inplace=True)
 
         # Correct Session with inlogical Session timestamp
-        df.loc[df['Session Timestamp'] > pd.to_datetime(NOW), 'Session Timestamp']  = df.loc[df['Session Timestamp'] > pd.to_datetime(NOW), 'Recapped Timestamp']
+        df.loc[df['Session Timestamp'] > pd.to_datetime(NOW.split()[0], yearfirst=True), 'Session Timestamp']  = df.loc[df['Session Timestamp'] > pd.to_datetime(NOW.split()[0], yearfirst=True), 'Recapped Timestamp']
         df.loc[df['Session Timestamp'].dt.year < 2022, 'Session Timestamp'] = df.loc[df['Session Timestamp'].dt.year < 2022, 'Recapped Timestamp']
-        
+
         # Extract Week and Year Month
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
         # df['Session Week'] = df['Session Week'].astype('int')
@@ -687,10 +687,11 @@ class MentorSessions():
             processed_schedule_df = pd.concat([processed_schedule_df, raw_schedule_df.drop(columns='Mentor name')], axis=0)
             processed_schedule_df.drop_duplicates(inplace=True)
             processed_schedule_df['Report Week'] = processed_schedule_df['Report Week'].astype(int)
-            Utils.save_gspread(processed_schedule_df,
-                            self.processed_schedule_dict['url'],
-                            self.processed_schedule_dict['worksheet_name'])
-        
+            if save == True:
+                Utils.save_gspread(processed_schedule_df,
+                                self.processed_schedule_dict['url'],
+                                self.processed_schedule_dict['worksheet_name'])
+            
         # ------ Match recap ------
         recap_journal = pd.merge(left=processed_schedule_df,
                                  right=raw_recaps_df,
