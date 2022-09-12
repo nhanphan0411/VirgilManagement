@@ -660,7 +660,7 @@ class MentorSessions():
 
         return df
 
-    def match_recap_and_compute_alert_learners(self, learner_master_df):
+    def match_recap_and_compute_alert_learners(self, learner_master_df, save=True):
         """ To match raw recap with pre-assigned schedule
             Input: master dataframe of learners with columns of Status, Student email, and Dropout Date
             Return: Write computed data (Matched recaps + Unfit recaps + Alert learners) to Recap Summary
@@ -701,9 +701,10 @@ class MentorSessions():
         recap_journal['Recapped'] = 1
         recap_journal.loc[recap_journal['Recapped Timestamp'].isna(), 'Recapped'] = 0
         recap_journal['Updated at'] = NOW
-        Utils.save_gspread(recap_journal,
-                        self.processed_recaps_dict['url'],
-                        self.processed_recaps_dict['worksheet_name'])
+        if save==True:
+            Utils.save_gspread(recap_journal,
+                            self.processed_recaps_dict['url'],
+                            self.processed_recaps_dict['worksheet_name'])
         
         # ------ Filter unfit recaps ------
         processed_schedule_df['match'] = processed_schedule_df['Mentor email'] + processed_schedule_df['Mentee email']
@@ -711,10 +712,11 @@ class MentorSessions():
         wrong_input = raw_recaps_df[~raw_recaps_df['match'].isin(processed_schedule_df['match'].unique())].drop(columns='match')
         wrong_input['Updated at'] = NOW
         raw_recaps_df.drop(columns='match', inplace=True)
-        Utils.save_gspread(wrong_input,
-                        self.unfit_recaps_dict['url'],
-                        self.unfit_recaps_dict['worksheet_name'],
-                        clear_sheet=True)
+        if save == True:
+            Utils.save_gspread(wrong_input,
+                            self.unfit_recaps_dict['url'],
+                            self.unfit_recaps_dict['worksheet_name'],
+                            clear_sheet=True)
         
         # ------ Compute alert learners ------
         raw_schedule_df.columns = ['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type', 'Report Week']
