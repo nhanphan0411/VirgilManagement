@@ -631,6 +631,7 @@ class MentorSessions():
 
         # Students who missed 2 recent mentor sessions
         df = learner_recap_pivot[(learner_recap_pivot[1] < 2) & (learner_recap_pivot[2] < 2)]
+        df = df.fillna(0)
         df = df.reset_index()
 
         # Merge with master data 
