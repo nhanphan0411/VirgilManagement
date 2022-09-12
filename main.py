@@ -10,7 +10,6 @@ import numpy as np
 import re
 
 import os
-from datetime import date
 from pathlib import Path
 import glob
 
@@ -676,14 +675,14 @@ class MentorSessions():
         raw_schedule_df = raw_schedule_df[(raw_schedule_df['Schedule Status'] == 'Confirm') & (raw_schedule_df['Confirm Time'] != '') & (raw_schedule_df['Student email'].isin(active_students))]
         raw_schedule_df = raw_schedule_df[['Student name', 'Student email', 'Mentor name', 'Mentor email', 'Type']].reset_index(drop=True)
         raw_schedule_df.columns = ['Mentee name', 'Mentee email', 'Mentor name', 'Mentor email', 'Type']
-        raw_schedule_df['Report Week'] = datetime.date.today().isocalendar()[1]
+        raw_schedule_df['Report Week'] = datetime.datetime.now(pytz.timezone('Asia/Bangkok')).isocalendar()[1]
 
         # ------ Update schedule ------
         # If today is Monday → Create new blank schedule
         dow = datetime.datetime.today().weekday()
         # On Monday, update the new schedule 
         if dow == 0:
-            processed_schedule_df = pd.concat([processed_schedule_df, raw_schedule_df.drop(columns='Mentor name', inplace=True)], axis=0)
+            processed_schedule_df = pd.concat([processed_schedule_df, raw_schedule_df.drop(columns='Mentor name')], axis=0)
             processed_schedule_df.drop_duplicates(inplace=True)
             processed_schedule_df['Report Week'] = processed_schedule_df['Report Week'].astype(int)
             Utils.save_gspread(processed_schedule_df,
