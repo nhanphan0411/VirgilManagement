@@ -73,13 +73,22 @@ SESSION_SHEETS = {
 }
 
 # Estimation in cumsum
-COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3'],
-               "Web Minicourses": ['M1.1', 'M1.2', 'M1.3', 'M1.4', 'M2.1', 'M2.2', 'M2.3', 'M3.1', 'M3.2', 'M3.3'],
-               "Web Estimation": {'M1': 10, 'M2': 16, 'M3': 24},
+COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
+               "Web Minicourses": ['M1.1', 'M1.2', 'M1.3', 'M1.4', 'M2.1', 'M2.2', 'M2.3', 'M3.1', 'M3.2', 'M3.3', 'M4.1', 'M5.1'],
+               "Web Estimation": {'M1': 6, 'M2': 12, 'M3': 18, 'M4': 19, 'M5': 24},
+               "Web Minicourse Estimation": {'M1.1': 1, 'M1.2': 2, 'M1.3': 2, 'M1.4': 1, 'M2.1': 1, 'M2.2': 3, 'M2.3': 2, 'M3.1': 2, 'M3.2': 2, 'M3.3': 2, 'M4.1': 1, 'M5.1': 5},
                "DS Modules": ['M1', 'M2', 'M3', 'M4'],
                "DS Minicourses": ['M1.1', 'M1.2', 'M2.1', 'M2.2', 'M3.1', 'M3.2', 'M4.1', 'M4.2', 'M5.1'],
-               "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 18, 'M5': 24}
-               }
+               "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 19, 'M5': 24},
+               "DS Minicourse Estimation": {'M1.1': 4, 
+                         'M1.2': 2, 
+                         'M2.1': 2, 
+                         'M2.2': 2, 
+                         'M3.1': 2, 
+                         'M3.2': 2, 
+                         'M4.1': 1, 
+                         'M4.2': 4, 
+                         'M5.1': 5}}
 
 STAFF_EMAILS = ['hieu.n.pham1210@gmail.com', 'lehoangchauanh@gmail.com']
 
@@ -176,7 +185,6 @@ class Learners(object):
     
     def load_and_preprocess_master_data(self):
         df = Utils.load_gspread(*self.master_data_dict.values())
-        # df = Utils.load_gspread(self.master_url, self.master_worksheet_name, self.master_columns)
         df = self.preprocess_master_data(df)
         return df
     
@@ -309,7 +317,7 @@ class Learners(object):
     def preprocess_learning_pace_report(self, pace_report, course):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
-        modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
+        # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
         modules = COURSE_INFO[f"{course} Modules"]
         minicourses = COURSE_INFO[f"{course} Minicourses"]
         
@@ -364,6 +372,22 @@ class Learners(object):
         pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
         pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
         pace_report['On Track'] = pace_report['Module At'] >= pace_report['Expected Module At']
+
+        # Get On Track by Minicourse
+        def get_expected_minicourse_at(weeks, course): 
+            expected_minicourse_at = (weeks > np.array(list(COURSE_INFO[f"{course} Minicourse Estimation"].values()))).sum() + 1
+            return expected_minicourse_at
+        
+        pace_report['Expected Minicourse At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
+        
+        minicourse_reversed_dict = {}
+        for i, j in enumerate((COURSE_INFO[f'{course} Minicourses'])):
+            minicourse_reversed_dict[j] = i+1
+        
+        pace_report['Minicourse At Code'] = None
+        pace_report.loc[pace_report['Mini-Course At'].notna(), 'Minicourse At Code'] = pace_report.loc[pace_report['Mini-Course At'].notna(), 'Mini-Course At'].apply(lambda x: minicourse_reversed_dict[x])
+        pace_report['On Track Mini-Course'] = pace_report['Minicourse At Code'] >= pace_report['Expected Minicourse At']  
+        pace_report.drop(columns=['Minicourse At Code'], inplace=True)          
 
         return pace_report
 
