@@ -81,14 +81,14 @@ COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
                "DS Minicourses": ['M1.1', 'M1.2', 'M2.1', 'M2.2', 'M3.1', 'M3.2', 'M4.1', 'M4.2', 'M5.1'],
                "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 19, 'M5': 24},
                "DS Minicourse Estimation": {'M1.1': 4, 
-                         'M1.2': 2, 
-                         'M2.1': 2, 
-                         'M2.2': 2, 
-                         'M3.1': 2, 
-                         'M3.2': 2, 
-                         'M4.1': 1, 
-                         'M4.2': 4, 
-                         'M5.1': 5}}
+                         'M1.2': 6, 
+                         'M2.1': 8, 
+                         'M2.2': 10, 
+                         'M3.1': 12, 
+                         'M3.2': 14, 
+                         'M4.1': 15, 
+                         'M4.2': 19, 
+                         'M5.1': 24}}
 
 STAFF_EMAILS = ['hieu.n.pham1210@gmail.com', 'lehoangchauanh@gmail.com']
 
@@ -330,8 +330,8 @@ class Learners(object):
         
         # Reformat the table
         pace_report = pace_report.pivot_table(index=['Email', 'User Name', 'Tags'],
-                                              columns='MiniCourse',
-                                              values=['Start', 'Finish']).reset_index()
+                                                columns='MiniCourse',
+                                                values=['Start', 'Finish']).reset_index()
         
         pace_report.columns = list(map(lambda x: x.strip("_"), pace_report.columns.get_level_values(0) + '_' +  pace_report.columns.get_level_values(1)))
         
@@ -386,7 +386,11 @@ class Learners(object):
         pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
         pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
 
-        def check_on_track_by_module(module_at, module_expected, status):
+        def check_on_track_by_module(row):
+            module_at = row['Module At']
+            module_expected = row['Expected Module At'] 
+            status = row['Status']
+
             # The on-track metric pays attention to ACTIVE learners only
             if status != 'active':
                 return None
@@ -403,11 +407,18 @@ class Learners(object):
         # Get On Track by Minicourse
         def get_expected_minicourse_at(weeks, course): 
             expected_minicourse_at = (weeks > np.array(list(COURSE_INFO[f"{course} Minicourse Estimation"].values()))).sum()
-            return minicourses[expected_minicourse_at]
+            if expected_minicourse_at == len(minicourses):
+                return minicourses[expected_minicourse_at-1]
+            else: 
+                return minicourses[expected_minicourse_at]
         
         pace_report['Expected Mini-Course At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
         
-        def check_on_track_by_minicourse(minicourse_at, minicourse_expected, status):
+        def check_on_track_by_minicourse(row):
+            minicourse_at = row['Mini-Course At']
+            minicourse_expected = row['Expected Mini-Course At'] 
+            status = row['Status']
+
             # The on-track metric pays attention to ACTIVE learners only
             if status != 'active':
                 return None
@@ -427,7 +438,6 @@ class Learners(object):
 
         # Off-track for how many weeks
         pace_report['Weeks Off Track'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
-        pace_report.drop(columns=['Minicourse At Code'], inplace=True)
         
         # Update timestamp 
         pace_report['Updated At'] = NOW
