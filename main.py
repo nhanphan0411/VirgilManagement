@@ -77,7 +77,7 @@ COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
                "Web Minicourses": ['M1.1', 'M1.2', 'M1.3', 'M1.4', 'M2.1', 'M2.2', 'M2.3', 'M3.1', 'M3.2', 'M3.3', 'M4.1', 'M5.1'],
                "Web Estimation": {'M1': 6, 'M2': 12, 'M3': 18, 'M4': 19, 'M5': 24},
                "Web Minicourse Estimation": {'M1.1': 1, 'M1.2': 2, 'M1.3': 2, 'M1.4': 1, 'M2.1': 1, 'M2.2': 3, 'M2.3': 2, 'M3.1': 2, 'M3.2': 2, 'M3.3': 2, 'M4.1': 1, 'M5.1': 5},
-               "DS Modules": ['M1', 'M2', 'M3', 'M4'],
+               "DS Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
                "DS Minicourses": ['M1.1', 'M1.2', 'M2.1', 'M2.2', 'M3.1', 'M3.2', 'M4.1', 'M4.2', 'M5.1'],
                "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 19, 'M5': 24},
                "DS Minicourse Estimation": {'M1.1': 4, 
@@ -373,24 +373,45 @@ class Learners(object):
         pace_report['Mini-Course At'] = pace_report[list(map(lambda x: 'Start_'+x, minicourses))].apply(get_minicourse_at, axis='columns')
         pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
         pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
-        pace_report['On Track'] = pace_report['Module At'] >= pace_report['Expected Module At']
+
+        def check_on_track_by_module(module_at, module_expected, status):
+            # The on-track metric pays attention to ACTIVE learners only
+            if status != 'active':
+                return None
+            else: 
+                # Learners who are supposed to graduate already
+                if module_expected > len(modules):
+                    return False
+                # Other actives
+                else: 
+                    return module_at >= module_expected
+        
+        pace_report['On Track'] = pace_report[['Module At', 'Expected Module At', 'Status']].apply(check_on_track_by_module, axis=1)
 
         # Get On Track by Minicourse
         def get_expected_minicourse_at(weeks, course): 
             expected_minicourse_at = (weeks > np.array(list(COURSE_INFO[f"{course} Minicourse Estimation"].values()))).sum()
-            return expected_minicourse_at
+            return minicourses[expected_minicourse_at]
         
-        pace_report['Expected Minicourse At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
+        pace_report['Expected Mini-Course At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
         
-        minicourse_reversed_dict = {}
-        for i, j in enumerate((COURSE_INFO[f'{course} Minicourses'])):
-            minicourse_reversed_dict[j] = i+1
+        def check_on_track_by_minicourse(minicourse_at, minicourse_expected, status):
+            # The on-track metric pays attention to ACTIVE learners only
+            if status != 'active':
+                return None
+            else: 
+                # Learners who are supposed to graduate already
+                if minicourse_expected == len(minicourses):
+                    return False
+                # Other actives
+                else: 
+                    # Convert the minicourse_at to index format
+                    minicourse_at_in_num = minicourses.index(minicourse_at)
+                    minicourse_expected_in_num = minicourses.index(minicourse_expected)
+                    return minicourse_at_in_num >= minicourse_expected_in_num
+
         
-        pace_report['Minicourse At Code'] = None
-        pace_report.loc[pace_report['Mini-Course At'].notna(), 'Minicourse At Code'] = pace_report.loc[pace_report['Mini-Course At'].notna(), 'Mini-Course At'].apply(lambda x: minicourse_reversed_dict[x])
-        pace_report['On Track Mini-Course'] = pace_report['Minicourse At Code'] >= pace_report['Expected Minicourse At']  
-        pace_report.loc[pace_report['Expected Minicourse At'].notna(), 'Expected Minicourse At'] = pace_report.loc[pace_report['Expected Minicourse At'].notna(), 'Expected Minicourse At'].apply(lambda x: minicourses[x])
-                
+        pace_report['On Track Mini-Course'] = pace_report[['Mini-Course At', 'Expected Mini-Course At', 'Status']].apply(check_on_track_by_minicourse, axis=1)                
 
         # Off-track for how many weeks
         pace_report['Weeks Off Track'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
