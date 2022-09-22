@@ -316,7 +316,7 @@ class Learners(object):
                                     'Date of certificate': 'Finish'}, inplace=True)
         return pace_report 
 
-    def preprocess_learning_pace_report(self, pace_report, learner_master_data, course):
+    def preprocess_learning_pace_report(self, pace_report, learner_master_data, course, save=False):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
         # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
@@ -340,10 +340,10 @@ class Learners(object):
         # Last minicourse = date of certificate - start of the last minicourse  
         for i in range(len(minicourses)-1):
             time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
-            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
         time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
-        time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D')) + 1).apply(np.ceil).astype('float')
+        time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
         pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
 
         # Calculate consumed time (in weeks) for a learner to finish a module
@@ -431,67 +431,75 @@ class Learners(object):
         
         # Update timestamp 
         pace_report['Updated At'] = NOW
-        pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)          
-        return pace_report
-
-    # ----- Combine Users Report with Master Data -----
-    def update_progress_report(self, student_master_df, learning_pace_report, course, save=False):
-        course_code = {'Web': 'FTW', 'DS': 'DS'}
-        student_master_df = student_master_df[student_master_df['Status']!='to be enrolled']
-        students_by_course_df = student_master_df[student_master_df['Class']==course_code[course]]
-        progress_df = pd.merge(left=learning_pace_report, 
-                            right=students_by_course_df[['Student email', 'Status', 'Student name', 
-                                                         'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
-                            left_on='Email',
-                            how='right',
-                            right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
-                                                                                            'Status', 'Batch Code', 'Batch', 
-                                                                                            'Duration to Drop'] + list(learning_pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
-        
-        # Correct graduated learners
-        progress_df.loc[(progress_df['Status'] == 'graduated'), 'On Track'] = True 
-
-        # Update timestamp 
-        progress_df['Updated At'] = NOW
-        progress_df = progress_df.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)
-        
-        # Students by batch and status
-        by_status = pd.pivot_table(data=progress_df,
-                    columns='Status',
-                    index=['Batch Code', 'Batch'],
-                    values='Email',
-                    aggfunc=len,
-                    margins=True).rename(columns={'All': 'total in batch'})
-
-        # Among active student where are they at?
-        by_active_module = pd.pivot_table(data=progress_df[progress_df['Status']=='active'],
-                    columns='Module At',
-                    index=['Batch Code', 'Batch'],
-                    values='Email',
-                    aggfunc=len,
-                    margins=True).drop(columns=['All'])
-
-        if course == 'Web':
-            by_active_module.columns = ['active at M1', 'active at M2', 'active at M3']
-        elif course == 'DS':
-            by_active_module.columns = ['active at M1', 'active at M2', 'active at M3', 'active at M4', 'active at M5']
-
-        by_batch = pd.concat([by_status, by_active_module], axis=1).fillna(0).astype(int)
-        by_batch = by_batch.drop(index=['All']).reset_index()
+        pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)  
 
         if save:
             # Save
-            Utils.save_gspread(progress_df,
+            Utils.save_gspread(pace_report,
                             'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
                             f'{course}_LW_Master')
-            Logger.success(f'Successfully wrote {course} student progress data')
-            
-            Utils.save_gspread(by_batch,
-                            'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
-                            f'{course}_LW_Pivot')
-            Logger.success(f'Successfully wrote {course} student progress pivot data')
+            Logger.success(f'Successfully wrote {course} student progress data')        
+        
+        return pace_report
 
-        return progress_df, by_batch
+    # # ----- Combine Users Report with Master Data -----
+    # def update_progress_report(self, student_master_df, learning_pace_report, course, save=False):
+    #     course_code = {'Web': 'FTW', 'DS': 'DS'}
+    #     student_master_df = student_master_df[student_master_df['Status']!='to be enrolled']
+    #     students_by_course_df = student_master_df[student_master_df['Class']==course_code[course]]
+    #     progress_df = pd.merge(left=learning_pace_report, 
+    #                         right=students_by_course_df[['Student email', 'Status', 'Student name', 
+    #                                                      'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
+    #                         left_on='Email',
+    #                         how='right',
+    #                         right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
+    #                                                                                         'Status', 'Batch Code', 'Batch', 
+    #                                                                                         'Duration to Drop'] + list(learning_pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
+        
+    #     # Correct graduated learners
+    #     progress_df.loc[(progress_df['Status'] == 'graduated'), 'On Track'] = True 
+
+    #     # Update timestamp 
+    #     progress_df['Updated At'] = NOW
+    #     progress_df = progress_df.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)
+        
+    #     # Students by batch and status
+    #     by_status = pd.pivot_table(data=progress_df,
+    #                 columns='Status',
+    #                 index=['Batch Code', 'Batch'],
+    #                 values='Email',
+    #                 aggfunc=len,
+    #                 margins=True).rename(columns={'All': 'total in batch'})
+
+    #     # Among active student where are they at?
+    #     by_active_module = pd.pivot_table(data=progress_df[progress_df['Status']=='active'],
+    #                 columns='Module At',
+    #                 index=['Batch Code', 'Batch'],
+    #                 values='Email',
+    #                 aggfunc=len,
+    #                 margins=True).drop(columns=['All'])
+
+    #     if course == 'Web':
+    #         by_active_module.columns = ['active at M1', 'active at M2', 'active at M3']
+    #     elif course == 'DS':
+    #         by_active_module.columns = ['active at M1', 'active at M2', 'active at M3', 'active at M4', 'active at M5']
+
+    #     by_batch = pd.concat([by_status, by_active_module], axis=1).fillna(0).astype(int)
+    #     by_batch = by_batch.drop(index=['All']).reset_index()
+
+    #     if save:
+    #         # Save
+    #         Utils.save_gspread(progress_df,
+    #                         'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
+    #                         f'{course}_LW_Master')
+    #         Logger.success(f'Successfully wrote {course} student progress data')
+            
+    #         Utils.save_gspread(by_batch,
+    #                         'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
+    #                         f'{course}_LW_Pivot')
+    #         Logger.success(f'Successfully wrote {course} student progress pivot data')
+
+    #     return progress_df, by_batch
     
     # ------- Preprocess LW Progress Report in Detail --------
     def get_check_report(self, reports, pace_report):
