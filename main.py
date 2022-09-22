@@ -316,7 +316,7 @@ class Learners(object):
                                     'Date of certificate': 'Finish'}, inplace=True)
         return pace_report 
 
-    def preprocess_learning_pace_report(self, pace_report, course):
+    def preprocess_learning_pace_report(self, pace_report, learner_master_data, course):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
         # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
@@ -361,6 +361,18 @@ class Learners(object):
         # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
         pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] // pd.to_timedelta(7, 'D'))
+
+        # Merge with the learner master data
+        course_code = {'Web': 'FTW', 'DS': 'DS'}
+        learner_master_data = learner_master_data[learner_master_data['Status']!='to be enrolled']
+        learner_master_data = learner_master_data[learner_master_data['Class']==course_code[course]]
+        pace_report = pd.merge(left=pace_report, 
+                                right=learner_master_data[['Student email', 'Status', 'Student name', 'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
+                                left_on='Email',
+                                how='right',
+                                right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
+                                                                                            'Status', 'Batch Code', 'Batch', 
+                                                                                            'Duration to Drop'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
         
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
@@ -415,7 +427,11 @@ class Learners(object):
 
         # Off-track for how many weeks
         pace_report['Weeks Off Track'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
-        pace_report.drop(columns=['Minicourse At Code'], inplace=True)          
+        pace_report.drop(columns=['Minicourse At Code'], inplace=True)
+        
+        # Update timestamp 
+        pace_report['Updated At'] = NOW
+        pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)          
         return pace_report
 
     # ----- Combine Users Report with Master Data -----
