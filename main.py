@@ -393,7 +393,7 @@ class Learners(object):
                 
 
         # Off-track for how many weeks
-        pace_report['Weeks Offtracks'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
+        pace_report['Weeks Off Track'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
         pace_report.drop(columns=['Minicourse At Code'], inplace=True)          
         return pace_report
 
