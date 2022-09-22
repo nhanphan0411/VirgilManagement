@@ -115,6 +115,8 @@ class Learners(object):
             'web-virgil-intro-to-nodejs': 'WebVirgil/M3.1',
             'web-virgil-expressjs-with-mongodb': 'WebVirgil/M3.2',
             'wv-restful-backend': 'WebVirgil/M3.3',
+            'wv-case-study': 'WebVirgil/M4.1',
+            'web-virgil-full-stack-web-final-project': 'WebVirgil/M5.1',
             'da-virgil': 'DSVirgil',
             'dv-m11-basic-python': 'DSVirgil/M1.1',
             'dv-m12-python-practice': 'DSVirgil/M1.2',
@@ -358,7 +360,7 @@ class Learners(object):
 
         # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
-        pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] / pd.to_timedelta(7, 'D')).apply(np.ceil)
+        pace_report['Weeks in Course'] = (pace_report['Weeks in Course'] // pd.to_timedelta(7, 'D'))
         
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
@@ -375,7 +377,7 @@ class Learners(object):
 
         # Get On Track by Minicourse
         def get_expected_minicourse_at(weeks, course): 
-            expected_minicourse_at = (weeks > np.array(list(COURSE_INFO[f"{course} Minicourse Estimation"].values()))).sum() + 1
+            expected_minicourse_at = (weeks > np.array(list(COURSE_INFO[f"{course} Minicourse Estimation"].values()))).sum()
             return expected_minicourse_at
         
         pace_report['Expected Minicourse At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
@@ -387,8 +389,12 @@ class Learners(object):
         pace_report['Minicourse At Code'] = None
         pace_report.loc[pace_report['Mini-Course At'].notna(), 'Minicourse At Code'] = pace_report.loc[pace_report['Mini-Course At'].notna(), 'Mini-Course At'].apply(lambda x: minicourse_reversed_dict[x])
         pace_report['On Track Mini-Course'] = pace_report['Minicourse At Code'] >= pace_report['Expected Minicourse At']  
-        pace_report.drop(columns=['Minicourse At Code'], inplace=True)          
+        pace_report.loc[pace_report['Expected Minicourse At'].notna(), 'Expected Minicourse At'] = pace_report.loc[pace_report['Expected Minicourse At'].notna(), 'Expected Minicourse At'].apply(lambda x: minicourses[x])
+                
 
+        # Off-track for how many weeks
+        pace_report['Weeks Offtracks'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
+        pace_report.drop(columns=['Minicourse At Code'], inplace=True)          
         return pace_report
 
     # ----- Combine Users Report with Master Data -----
