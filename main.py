@@ -76,7 +76,18 @@ SESSION_SHEETS = {
 COURSE_INFO = {"Web Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
                "Web Minicourses": ['M1.1', 'M1.2', 'M1.3', 'M1.4', 'M2.1', 'M2.2', 'M2.3', 'M3.1', 'M3.2', 'M3.3', 'M4.1', 'M5.1'],
                "Web Estimation": {'M1': 6, 'M2': 12, 'M3': 18, 'M4': 19, 'M5': 24},
-               "Web Minicourse Estimation": {'M1.1': 1, 'M1.2': 2, 'M1.3': 2, 'M1.4': 1, 'M2.1': 1, 'M2.2': 3, 'M2.3': 2, 'M3.1': 2, 'M3.2': 2, 'M3.3': 2, 'M4.1': 1, 'M5.1': 5},
+               "Web Minicourse Estimation": {'M1.1': 1, 
+                                            'M1.2': 3, 
+                                            'M1.3': 5, 
+                                            'M1.4': 6, 
+                                            'M2.1': 7, 
+                                            'M2.2': 10, 
+                                            'M2.3': 12, 
+                                            'M3.1': 14, 
+                                            'M3.2': 16, 
+                                            'M3.3': 18, 
+                                            'M4.1': 19, 
+                                            'M5.1': 24},
                "DS Modules": ['M1', 'M2', 'M3', 'M4', 'M5'],
                "DS Minicourses": ['M1.1', 'M1.2', 'M2.1', 'M2.2', 'M3.1', 'M3.2', 'M4.1', 'M4.2', 'M5.1'],
                "DS Estimation": {'M1': 6, 'M2': 10, 'M3': 14, 'M4': 19, 'M5': 24},
@@ -316,7 +327,7 @@ class Learners(object):
                                     'Date of certificate': 'Finish'}, inplace=True)
         return pace_report 
 
-    def preprocess_learning_pace_report(self, pace_report, learner_master_data, course, save=False):
+    def preprocess_learning_pace_report(pace_report, learner_master_data, course, save=False):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
         # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
@@ -342,9 +353,16 @@ class Learners(object):
             time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
             time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
-        time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
-        time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-        pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
+        
+        try: 
+            time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
+            time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        except: 
+            time_to_finish_last_minicourse = None
+
+        # time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
+        # time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        # pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
 
         # Calculate consumed time (in weeks) for a learner to finish a module
         # Duration = start of latter module - start of previous module 
@@ -354,8 +372,15 @@ class Learners(object):
             time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
             time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'Module {i+1} Finished In'] = time_to_finish
-        time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
-        time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        
+        try:
+            time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
+            time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        except:
+            time_to_finish_last_module = None
+        
+        # time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
+        # time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
         pace_report[f'Module {len(modules)} Finished In'] = time_to_finish_last_module
 
         # Get Weeks in Course 
@@ -433,11 +458,11 @@ class Learners(object):
                     minicourse_expected_in_num = minicourses.index(minicourse_expected)
                     return minicourse_at_in_num >= minicourse_expected_in_num
 
-        
         pace_report['On Track Mini-Course'] = pace_report[['Mini-Course At', 'Expected Mini-Course At', 'Status']].apply(check_on_track_by_minicourse, axis=1)                
 
         # Off-track for how many weeks
-        pace_report['Weeks Off Track'] = pace_report['Weeks in Course'] - pace_report['Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
+        pace_report['Weeks Off Track'] = None
+        pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Weeks Off Track'] = pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Weeks in Course'] - pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
         
         # Update timestamp 
         pace_report['Updated At'] = NOW
