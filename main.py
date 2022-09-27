@@ -401,7 +401,11 @@ class Learners(object):
         
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
-            return minicourses[row.notna().sum()-1]
+            minicourse_idx = row.notna().sum()-1
+            if minicourse_idx == -1:
+                return minicourses[0]
+            else: 
+                return minicourses[row.notna().sum()-1]
         
         def get_expected_module_at(weeks, course): 
             expected_module_at = (weeks > np.array(list(COURSE_INFO[f"{course} Estimation"].values()))).sum() + 1
