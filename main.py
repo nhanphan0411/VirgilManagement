@@ -360,7 +360,7 @@ class Learners(object):
         except: 
             time_to_finish_last_minicourse = None
 
-        pace_report[f'Module {len(minicourses)} Finished In'] = time_to_finish_last_minicourse
+        pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
 
         # Calculate consumed time (in weeks) for a learner to finish a module
         # Duration = start of latter module - start of previous module 
