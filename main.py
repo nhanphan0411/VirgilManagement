@@ -327,7 +327,7 @@ class Learners(object):
                                     'Date of certificate': 'Finish'}, inplace=True)
         return pace_report 
 
-    def preprocess_learning_pace_report(pace_report, learner_master_data, course, save=False):
+    def preprocess_learning_pace_report(self, pace_report, learner_master_data, course, save=False):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
         # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
