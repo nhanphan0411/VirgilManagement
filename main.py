@@ -476,7 +476,8 @@ class Learners(object):
             # Save
             Utils.save_gspread(pace_report,
                             'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
-                            f'{course}_LW_Master')
+                            f'{course}_LW_Master',
+                            clear_sheet=True)
             Logger.success(f'Successfully wrote {course} student progress data')        
         
         return pace_report
