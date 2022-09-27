@@ -360,9 +360,7 @@ class Learners(object):
         except: 
             time_to_finish_last_minicourse = None
 
-        # time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
-        # time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-        # pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
+        pace_report[f'Module {len(minicourses)} Finished In'] = time_to_finish_last_minicourse
 
         # Calculate consumed time (in weeks) for a learner to finish a module
         # Duration = start of latter module - start of previous module 
@@ -378,9 +376,7 @@ class Learners(object):
             time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
         except:
             time_to_finish_last_module = None
-        
-        # time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
-        # time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+    
         pace_report[f'Module {len(modules)} Finished In'] = time_to_finish_last_module
 
         # Get Weeks in Course 
