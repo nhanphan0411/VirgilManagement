@@ -388,12 +388,12 @@ class Learners(object):
         learner_master_data = learner_master_data[learner_master_data['Status']!='to be enrolled']
         learner_master_data = learner_master_data[learner_master_data['Class']==course_code[course]]
         pace_report = pd.merge(left=pace_report, 
-                                right=learner_master_data[['Student email', 'Status', 'Student name', 'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
+                                right=learner_master_data[['Student email', 'Status', 'Student name', 'Batch Code', 'Batch', 'Duration to Drop', 'Learning type', 'Enrollment Month', 'Dropout Month', 'Graduated Month']],
                                 left_on='Email',
                                 how='right',
                                 right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
                                                                                             'Status', 'Batch Code', 'Batch', 
-                                                                                            'Duration to Drop'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
+                                                                                            'Duration to Drop',  'Enrollment Month', 'Dropout Month', 'Graduated Month'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
         
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
