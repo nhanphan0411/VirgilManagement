@@ -280,7 +280,7 @@ class Learners(object):
                     raw_report['MiniCourse'] = module
                     all_time_spent_reports[module] = raw_report
 
-                    raw_report = pd.read_excel(filepath, sheet_name='Progress')
+                    raw_report = pd.read_excel(filepath, sheet_name='Progress Status')
                     raw_report['MiniCourse'] = module
                     all_progress_reports[module] = raw_report
         
