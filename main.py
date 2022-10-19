@@ -252,6 +252,40 @@ class Learners(object):
         for filepath in self.get_zip_files_by_date(date):
             self.unzip_one_report(filepath)
     
+    def load_report_by_date(self, date=date.today().strftime("%Y-%m-%d"), course_name='Web'):
+        Logger.info(f'Get reports of {course_name} Virgil by {date}')
+        filepaths = [
+            os.path.join(LEARNER_SHEETS['learnworld']['url'], f)
+            for f in glob.glob(os.path.join(LEARNER_SHEETS['learnworld']['url'], self.reports_dir[course_name], '**', '*.xlsx'), recursive=True)
+                if os.path.isfile(os.path.join(LEARNER_SHEETS['learnworld']['url'], f)) and (f.find(date) > 0)
+        ]
+        if (len(filepaths) == 0):
+            Logger.error('No reports found.')
+            return []
+        else:
+            print(f'{len(filepaths)} reports found.')
+
+        all_summary_reports = {item[1].split('/')[1]: None for item in self.lw_map_dir.items() if f'{course_name}Virgil/' in item[1]}
+        all_time_spent_reports = {}
+        all_progress_reports = {}
+
+        for module in all_summary_reports.keys():
+            for filepath in filepaths:
+                if filepath.find(module) > 0:
+                    raw_report = pd.read_excel(filepath, sheet_name='Summary')
+                    raw_report['MiniCourse'] = module
+                    all_summary_reports[module] = raw_report
+
+                    raw_report = pd.read_excel(filepath, sheet_name='Time Spent')
+                    raw_report['MiniCourse'] = module
+                    all_time_spent_reports[module] = raw_report
+
+                    raw_report = pd.read_excel(filepath, sheet_name='Progress')
+                    raw_report['MiniCourse'] = module
+                    all_progress_reports[module] = raw_report
+        
+        return all_summary_reports, all_time_spent_reports, all_progress_reports
+
     def load_summary_reports_by_date(self, date=date.today().strftime("%Y-%m-%d"), course_name='Web'):
         """Return a JSON file with keys as Mini-Courses"""
         Logger.info(f'Get reports of {course_name} Virgil by {date}')
@@ -346,14 +380,28 @@ class Learners(object):
         
         pace_report.columns = list(map(lambda x: x.strip("_"), pace_report.columns.get_level_values(0) + '_' +  pace_report.columns.get_level_values(1)))
         
-        # Calculate consumed time (in weeks) for a learner to finish a mini-course
-        # Duration = start of latter minicourse - start of previous minicourse 
-        # Last minicourse = date of certificate - start of the last minicourse  
+        # ----- Calculate consumed time (in weeks) for a learner to finish a mini-course
+        # # Duration = start of latter minicourse - start of previous minicourse 
+        # # Last minicourse = date of certificate - start of the last minicourse  
+        # for i in range(len(minicourses)-1):
+        #     time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
+        #     time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        #     pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
+        # If there is a Start_Mx.x in the columns -> Find the finish -> If not finish -> Find the next minicourse. 
+        # Else: Fill with None
+        
         for i in range(len(minicourses)-1):
-            time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
+            if f"Start_{minicourses[i]}" in pace_report.columns:
+                if f"Finish_{minicourses[i]}" in pace_report.columns:
+                    time_to_finish = (pace_report[f"Finish_{minicourses[i]}"] - pace_report[f"Start_{minicourses[i]}"]) 
+                else:
+                    time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
+            else: 
+                time_to_finish = None
+            
             time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
-        
+
         try: 
             time_to_finish_last_minicourse = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{minicourses[-1]}"]
             time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
@@ -362,15 +410,27 @@ class Learners(object):
 
         pace_report[f'{minicourses[-1]} Finished In'] = time_to_finish_last_minicourse
 
-        # Calculate consumed time (in weeks) for a learner to finish a module
+        # ----- Calculate consumed time (in weeks) for a learner to finish a module
         # Duration = start of latter module - start of previous module 
         # Last module = date of certificate - start of the last module
         first_minicourses = list(map(lambda x: x+'.1', modules))
-        for i in range(len(modules) - 1):
-            time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
+        # for i in range(len(modules) - 1):
+        #     time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
+        #     time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
+        #     pace_report[f'Module {i+1} Finished In'] = time_to_finish
+        
+        for i in range(len(minicourses)-1):
+            if f"Start_{first_minicourses[i]}" in pace_report.columns:
+                if f"Finish_{first_minicourses[i]}" in pace_report.columns:
+                    time_to_finish = (pace_report[f"Finish_{first_minicourses[i]}"] - pace_report[f"Start_{first_minicourses[i]}"]) 
+                else:
+                    time_to_finish = (pace_report[f"Start_{first_minicourses[i+1]}"] - pace_report[f"Start_{first_minicourses[i]}"])
+            else: 
+                time_to_finish = None
+            
             time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
             pace_report[f'Module {i+1} Finished In'] = time_to_finish
-        
+
         try:
             time_to_finish_last_module = pace_report[f"Finish_{minicourses[-1]}"] - pace_report[f"Start_{first_minicourses[-1]}"]
             time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
