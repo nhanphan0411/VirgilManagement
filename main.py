@@ -419,7 +419,7 @@ class Learners(object):
         #     time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
         #     pace_report[f'Module {i+1} Finished In'] = time_to_finish
         
-        for i in range(len(minicourses)-1):
+        for i in range(len(modules)-1):
             if f"Start_{first_minicourses[i]}" in pace_report.columns:
                 if f"Finish_{first_minicourses[i]}" in pace_report.columns:
                     time_to_finish = (pace_report[f"Finish_{first_minicourses[i]}"] - pace_report[f"Start_{first_minicourses[i]}"]) 
