@@ -364,80 +364,49 @@ class Learners(object):
     def preprocess_learning_pace_report(self, pace_report, learner_master_data, course, save=False):
         pace_report['Email'] = pace_report['Email'].str.strip()
         pace_report = pace_report[~pace_report['Email'].isin(STAFF_EMAILS)]  
-        # modules = pace_report[pace_report['MiniCourse'].str.endswith(".1")]['MiniCourse'].unique()
         modules = COURSE_INFO[f"{course} Modules"]
         minicourses = COURSE_INFO[f"{course} Minicourses"]
-        
+
         # Convert to datetime
         pace_report.loc[:, 'Start'] = pd.to_datetime(pace_report.loc[:, 'Start'])
         pace_report.loc[pace_report['Finish'] == '-', 'Finish'] = None
         pace_report.loc[:, 'Finish'] = pd.to_datetime(pace_report.loc[:, 'Finish'])
-        
+
+        # Get the difference between report data and course data
+        missing_minicourses = list(set(minicourses).difference(set(pace_report['MiniCourse'].unique())))
+
         # Reformat the table
         pace_report = pace_report.pivot_table(index=['Email', 'User Name', 'Tags'],
                                                 columns='MiniCourse',
                                                 values=['Start', 'Finish']).reset_index()
-        
+
         pace_report.columns = list(map(lambda x: x.strip("_"), pace_report.columns.get_level_values(0) + '_' +  pace_report.columns.get_level_values(1)))
-        
+        pace_report[list(map(lambda x: 'Start_'+x, missing_minicourses))] = pd.NaT
+
+
         # ----- Calculate consumed time (in weeks) for a learner to finish a mini-course
-        # # Duration = start of latter minicourse - start of previous minicourse 
-        # # Last minicourse = date of certificate - start of the last minicourse  
-        # for i in range(len(minicourses)-1):
-        #     time_to_finish = (pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"])
-        #     time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-        #     pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
-        # If there is a Start_Mx.x in the columns -> Find the finish -> If not finish -> Find the next minicourse. 
-        # Else: Fill with None
-        all_minicourse_starts = list(sorted(list(filter(lambda x: x.startswith('Start'), pace_report.columns))))
-
-        for i in range(len(all_minicourse_starts)-1):
-            minicourse = all_minicourse_starts[i].split('_')[-1]
-            if f"Finish_{minicourse}" in pace_report.columns:
-                time_to_finish = (pace_report[f"Finish_{minicourses[i]}"] - pace_report[all_minicourse_starts[i]]) 
-            else:
-                time_to_finish = (pace_report[all_minicourse_starts[i+1]] - pace_report[all_minicourse_starts[i]])
-            
-            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-            pace_report[f'{minicourse} Finished In'] = time_to_finish
-
-
-        try:
-            last_minicourse = all_minicourse_starts[-1].split('_')[-1]
-            time_to_finish_last_minicourse = pace_report[f"Finish_{last_minicourse}"] - pace_report[f"Start_{last_minicourse}"]
-            time_to_finish_last_minicourse = ((time_to_finish_last_minicourse / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-        except: 
-            time_to_finish_last_minicourse = None
-
-        pace_report[f'{last_minicourse} Finished In'] = time_to_finish_last_minicourse
+        # Duration = start of latter minicourse - start of previous minicourse 
+        # Last minicourse = date of certificate - start of the last minicourse  
+        for i in range(len(minicourses)):
+            print(minicourses[i])
+            if f"Start_{minicourses[i]}" in pace_report.columns:
+                if f"Finish_{minicourses[i]}" in pace_report.columns:
+                    time_to_finish = pace_report[f"Finish_{minicourses[i]}"] - pace_report[f"Start_{minicourses[i]}"]
+                else:
+                    if i < len(minicourses)-1:  
+                        time_to_finish = pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"]
+                    else: 
+                        time_to_finish = None    
+                time_to_finish = time_to_finish // pd.to_timedelta(7, 'D')
+                pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
+            else: 
+                pace_report[f'{minicourses[i]} Finished In'] = None
 
         # ----- Calculate consumed time (in weeks) for a learner to finish a module
-        # Duration = start of latter module - start of previous module 
-        # Last module = date of certificate - start of the last module
-        all_module_starts = list(sorted(list(filter(lambda x: x.startswith('Start') & x.endswith('.1'), pace_report.columns))))
-        first_minicourses = list(map(lambda x: x+'.1', modules))
-        
-        for i in range(len(all_module_starts)-1):
-            first_minicourse_of_module = all_module_starts[i].split('_')[-1]
-            module_count = first_minicourse_of_module[1]
-            if f"Finish_{first_minicourse_of_module}" in pace_report.columns:
-                time_to_finish = (pace_report[f"Finish_{first_minicourse_of_module}"] - pace_report[f"Start_{first_minicourse_of_module}"]) 
-            else:
-                time_to_finish = (pace_report[all_module_starts[i+1]] - pace_report[all_module_starts[i]])
-            
-            time_to_finish = ((time_to_finish / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-            pace_report[f'Module {module_count} Finished In'] = time_to_finish
-
-        try:
-            first_minicourse_of_last_module = all_module_starts[-1].split('_')[-1]
-            last_minicourse_of_last_module = all_minicourse_starts[-1].split('_')[-1]
-
-            time_to_finish_last_module = pace_report[f"Finish_{last_minicourse_of_last_module}"] - pace_report[f"Start_{first_minicourse_of_last_module}"]
-            time_to_finish_last_module = ((time_to_finish_last_module / pd.to_timedelta(7, 'D'))).apply(np.ceil).astype('float')
-        except:
-            time_to_finish_last_module = None
-    
-        pace_report[f'Module {last_minicourse_of_last_module[1]} Finished In'] = time_to_finish_last_module
+        # Time to finish one module = SUM(time finished all the minicourses)
+        # Get all the modules available in the report
+        for m in modules:
+            pace_report[f"Module {m[1]} Finished In"] = pace_report[list(filter(lambda x: x.startswith(m), pace_report.columns))].sum(axis=1)
 
         # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
@@ -454,7 +423,7 @@ class Learners(object):
                                 right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
                                                                                             'Status', 'Batch Code', 'Batch', 
                                                                                             'Duration to Drop',  'Enrollment Month', 'Dropout Month', 'Graduated Month'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
-        
+
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
             minicourse_idx = row.notna().sum()-1
@@ -462,32 +431,35 @@ class Learners(object):
                 return minicourses[0]
             else: 
                 return minicourses[row.notna().sum()-1]
-        
+
         def get_expected_module_at(weeks, course): 
             expected_module_at = (weeks > np.array(list(COURSE_INFO[f"{course} Estimation"].values()))).sum() + 1
             return expected_module_at
-        
-        pace_report['Mini-Course At'] = pace_report[list(map(lambda x: 'Start_'+x, minicourses))].apply(get_minicourse_at, axis='columns')
-        pace_report['Module At'] = pace_report['Mini-Course At'].apply(lambda x: int(x[1]))
-        pace_report['Expected Module At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
 
+        # Get Minicourse At, Module At, On Track information
+        pace_report['Mini-Course At'] = None
+        pace_report.loc[pace_report['Status']=='active' ,'Mini-Course At'] = pace_report.loc[pace_report['Status']=='active', list(map(lambda x: 'Start_'+x, minicourses))].apply(get_minicourse_at, axis='columns')
+
+        pace_report['Module At'] = None
+        pace_report.loc[pace_report['Status']=='active', 'Module At'] = pace_report.loc[pace_report['Status']=='active', 'Mini-Course At'].apply(lambda x: int(x[1]))
+
+        pace_report['Expected Module At'] = None
+        pace_report.loc[pace_report['Status']=='active', 'Expected Module At'] = pace_report.loc[pace_report['Status']=='active', 'Weeks in Course'].apply(lambda x: get_expected_module_at(x, course))
+
+        # Get On Track by Module
         def check_on_track_by_module(row):
             module_at = row['Module At']
             module_expected = row['Expected Module At'] 
             status = row['Status']
 
-            # The on-track metric pays attention to ACTIVE learners only
-            if status != 'active':
-                return None
+            # Learners who are supposed to graduate already
+            if module_expected > len(modules):
+                return False
+            # Other actives
             else: 
-                # Learners who are supposed to graduate already
-                if module_expected > len(modules):
-                    return False
-                # Other actives
-                else: 
-                    return module_at >= module_expected
-        
-        pace_report['On Track'] = pace_report[['Module At', 'Expected Module At', 'Status']].apply(check_on_track_by_module, axis=1)
+                return module_at >= module_expected
+
+        pace_report.loc[pace_report['Status']=='active', 'On Track'] = pace_report.loc[pace_report['Status']=='active', ['Module At', 'Expected Module At', 'Status']].apply(check_on_track_by_module, axis=1)
 
         # Get On Track by Minicourse
         def get_expected_minicourse_at(weeks, course): 
@@ -496,9 +468,9 @@ class Learners(object):
                 return minicourses[expected_minicourse_at-1]
             else: 
                 return minicourses[expected_minicourse_at]
-        
-        pace_report['Expected Mini-Course At'] = pace_report['Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
-        
+
+        pace_report.loc[pace_report['Status']=='active', 'Expected Mini-Course At'] = pace_report.loc[pace_report['Status']=='active', 'Weeks in Course'].apply(lambda x: get_expected_minicourse_at(x, course))
+
         def check_on_track_by_minicourse(row):
             minicourse_at = row['Mini-Course At']
             minicourse_expected = row['Expected Mini-Course At'] 
@@ -518,12 +490,12 @@ class Learners(object):
                     minicourse_expected_in_num = minicourses.index(minicourse_expected)
                     return minicourse_at_in_num >= minicourse_expected_in_num
 
-        pace_report['On Track Mini-Course'] = pace_report[['Mini-Course At', 'Expected Mini-Course At', 'Status']].apply(check_on_track_by_minicourse, axis=1)                
+        pace_report.loc[pace_report['Status']=='active', 'On Track Mini-Course'] = pace_report.loc[pace_report['Status']=='active', ['Mini-Course At', 'Expected Mini-Course At', 'Status']].apply(check_on_track_by_minicourse, axis=1)                
 
         # Off-track for how many weeks
         pace_report['Weeks Off Track'] = None
         pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Weeks Off Track'] = pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Weeks in Course'] - pace_report.loc[pace_report['On Track Mini-Course'] == False, 'Mini-Course At'].apply(lambda x: COURSE_INFO[f"{course} Minicourse Estimation"][x])
-        
+
         # Update timestamp 
         pace_report['Updated At'] = NOW
         pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)  
@@ -537,65 +509,6 @@ class Learners(object):
             Logger.success(f'Successfully wrote {course} student progress data')        
         
         return pace_report
-
-    # # ----- Combine Users Report with Master Data -----
-    # def update_progress_report(self, student_master_df, learning_pace_report, course, save=False):
-    #     course_code = {'Web': 'FTW', 'DS': 'DS'}
-    #     student_master_df = student_master_df[student_master_df['Status']!='to be enrolled']
-    #     students_by_course_df = student_master_df[student_master_df['Class']==course_code[course]]
-    #     progress_df = pd.merge(left=learning_pace_report, 
-    #                         right=students_by_course_df[['Student email', 'Status', 'Student name', 
-    #                                                      'Batch Code', 'Batch', 'Duration to Drop', 'Learning type']],
-    #                         left_on='Email',
-    #                         how='right',
-    #                         right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
-    #                                                                                         'Status', 'Batch Code', 'Batch', 
-    #                                                                                         'Duration to Drop'] + list(learning_pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
-        
-    #     # Correct graduated learners
-    #     progress_df.loc[(progress_df['Status'] == 'graduated'), 'On Track'] = True 
-
-    #     # Update timestamp 
-    #     progress_df['Updated At'] = NOW
-    #     progress_df = progress_df.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)
-        
-    #     # Students by batch and status
-    #     by_status = pd.pivot_table(data=progress_df,
-    #                 columns='Status',
-    #                 index=['Batch Code', 'Batch'],
-    #                 values='Email',
-    #                 aggfunc=len,
-    #                 margins=True).rename(columns={'All': 'total in batch'})
-
-    #     # Among active student where are they at?
-    #     by_active_module = pd.pivot_table(data=progress_df[progress_df['Status']=='active'],
-    #                 columns='Module At',
-    #                 index=['Batch Code', 'Batch'],
-    #                 values='Email',
-    #                 aggfunc=len,
-    #                 margins=True).drop(columns=['All'])
-
-    #     if course == 'Web':
-    #         by_active_module.columns = ['active at M1', 'active at M2', 'active at M3']
-    #     elif course == 'DS':
-    #         by_active_module.columns = ['active at M1', 'active at M2', 'active at M3', 'active at M4', 'active at M5']
-
-    #     by_batch = pd.concat([by_status, by_active_module], axis=1).fillna(0).astype(int)
-    #     by_batch = by_batch.drop(index=['All']).reset_index()
-
-    #     if save:
-    #         # Save
-    #         Utils.save_gspread(progress_df,
-    #                         'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
-    #                         f'{course}_LW_Master')
-    #         Logger.success(f'Successfully wrote {course} student progress data')
-            
-    #         Utils.save_gspread(by_batch,
-    #                         'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
-    #                         f'{course}_LW_Pivot')
-    #         Logger.success(f'Successfully wrote {course} student progress pivot data')
-
-    #     return progress_df, by_batch
     
     # ------- Preprocess LW Progress Report in Detail --------
     def get_check_report(self, reports, pace_report):
