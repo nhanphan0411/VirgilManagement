@@ -142,8 +142,6 @@ class Learners(object):
         self.reports_dir = {'Web': 'WebVirgil',
                             'DS': 'DSVirgil'}
 
-
-    
     # ----- MASTER STUDENT DATA -----
     def preprocess_master_data(self, df):
         df = df[df['x'] != ''].copy(deep=True)
@@ -381,26 +379,30 @@ class Learners(object):
                                                 values=['Start', 'Finish']).reset_index()
 
         pace_report.columns = list(map(lambda x: x.strip("_"), pace_report.columns.get_level_values(0) + '_' +  pace_report.columns.get_level_values(1)))
-        pace_report[list(map(lambda x: 'Start_'+x, missing_minicourses))] = pd.NaT
 
 
         # ----- Calculate consumed time (in weeks) for a learner to finish a mini-course
         # Duration = start of latter minicourse - start of previous minicourse 
         # Last minicourse = date of certificate - start of the last minicourse  
-        for i in range(len(minicourses)):
-            print(minicourses[i])
-            if f"Start_{minicourses[i]}" in pace_report.columns:
-                if f"Finish_{minicourses[i]}" in pace_report.columns:
-                    time_to_finish = pace_report[f"Finish_{minicourses[i]}"] - pace_report[f"Start_{minicourses[i]}"]
-                else:
-                    if i < len(minicourses)-1:  
-                        time_to_finish = pace_report[f"Start_{minicourses[i+1]}"] - pace_report[f"Start_{minicourses[i]}"]
-                    else: 
-                        time_to_finish = None    
-                time_to_finish = time_to_finish // pd.to_timedelta(7, 'D')
-                pace_report[f'{minicourses[i]} Finished In'] = time_to_finish
-            else: 
-                pace_report[f'{minicourses[i]} Finished In'] = None
+        all_report_minicourse_starts = list(filter(lambda x: x.startswith('Start'), pace_report.columns))
+        for i in range(len(all_report_minicourse_starts)):
+            report_minicourse = all_report_minicourse_starts[i].split('_')[-1]
+            if f"Finish_{report_minicourse}" in pace_report.columns:
+                time_to_finish = pace_report[f"Finish_{report_minicourse}"] - pace_report[f"Start_{report_minicourse}"]
+            else:
+                if i < len(all_report_minicourse_starts)-1:  
+                    report_next_minicourse = all_report_minicourse_starts[i+1].split('_')[-1]
+                    time_to_finish = pace_report[f"Start_{report_next_minicourse}"] - pace_report[f"Start_{report_minicourse}"]
+                else: 
+                    time_to_finish = None    
+            
+            time_to_finish = time_to_finish // pd.to_timedelta(7, 'D')
+            pace_report[f'{report_minicourse} Finished In'] = time_to_finish
+
+        # Fill-in minicourse that don't have report time
+        pace_report[list(map(lambda x: x+' Finished In', missing_minicourses))] = None
+        pace_report[list(map(lambda x: 'Start_'+x, missing_minicourses))] = pd.NaT
+        pace_report[list(map(lambda x: 'Start_'+x, minicourses))] = pace_report[list(map(lambda x: 'Start_'+x, minicourses))].fillna(method='bfill', axis=1)
 
         # ----- Calculate consumed time (in weeks) for a learner to finish a module
         # Time to finish one module = SUM(time finished all the minicourses)
@@ -417,12 +419,16 @@ class Learners(object):
         learner_master_data = learner_master_data[learner_master_data['Status']!='to be enrolled']
         learner_master_data = learner_master_data[learner_master_data['Class']==course_code[course]]
         pace_report = pd.merge(left=pace_report, 
-                                right=learner_master_data[['Student email', 'Status', 'Student name', 'Batch Code', 'Batch', 'Duration to Drop', 'Learning type', 'Enrollment Month', 'Dropout Month', 'Graduated Month']],
+                                right=learner_master_data[['Student email', 'Status', 'Student name', 
+                                                        'Batch Code', 'Batch', 'Duration to Drop', 
+                                                        'Learning type', 'Enrollment Month', 'Dropout Month', 
+                                                        'Graduated Month', 'Return Month']],
                                 left_on='Email',
                                 how='right',
                                 right_on='Student email').drop(columns=['Email', 'User Name'])[['Student email', 'Student name', 'Tags', 'Learning type',
                                                                                             'Status', 'Batch Code', 'Batch', 
-                                                                                            'Duration to Drop',  'Enrollment Month', 'Dropout Month', 'Graduated Month'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
+                                                                                            'Duration to Drop',  'Enrollment Month', 'Dropout Month', 
+                                                                                            'Graduated Month', 'Return Month'] + list(pace_report.columns[3:])].rename(columns={'Student email': 'Email'})
 
         # Get checkpoint where learners at 
         def get_minicourse_at(row):
@@ -499,6 +505,13 @@ class Learners(object):
         # Update timestamp 
         pace_report['Updated At'] = NOW
         pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)  
+        col_orders = ['Email', 'Student name', 'Tags', 'Learning type', 'Status',
+            'Batch Code', 'Batch', 'Duration to Drop', 'Enrollment Month',
+            'Dropout Month', 'Graduated Month', 'Return Month'] + list(map(lambda x: 'Start_'+x, minicourses)) + list(map(lambda x: x+" Finished In", minicourses)) + list(map(lambda x: f"Module {x[1]} Finished In", modules)) + ['Weeks in Course', 'Mini-Course At', 'Module At', 
+                                                                                                                                                                                                                                    'Expected Module At', 'On Track',
+                                                                                                                                                                                                                                    'Expected Mini-Course At', 'On Track Mini-Course', 'Weeks Off Track','Updated At']
+                                                                                                                                                                                
+        pace_report = pace_report[col_orders]
 
         if save:
             # Save
@@ -654,7 +667,6 @@ class MentorSessions():
 
         # Extract Week and Year Month
         df['Session Week'] = df['Session Timestamp'].dt.isocalendar().week
-        # df['Session Week'] = df['Session Week'].astype('int')
         df['Session Year Month'] = df['Session Timestamp'].dt.to_period('M')
                 
         # Text Columns
@@ -808,6 +820,7 @@ class MentorSessions():
         alert_learners = self.compute_alert_learners(raw_recaps_df, raw_schedule_df, learner_master_df, save=True)
 
         return recap_journal, wrong_input, alert_learners
+
 # -----------------------------------------------------------
 #  Utils 
 # -----------------------------------------------------------
