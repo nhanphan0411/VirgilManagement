@@ -385,19 +385,23 @@ class Learners(object):
         # Duration = start of latter minicourse - start of previous minicourse 
         # Last minicourse = date of certificate - start of the last minicourse  
         all_report_minicourse_starts = list(filter(lambda x: x.startswith('Start'), pace_report.columns))
-        for i in range(len(all_report_minicourse_starts)):
-            report_minicourse = all_report_minicourse_starts[i].split('_')[-1]
-            if f"Finish_{report_minicourse}" in pace_report.columns:
-                time_to_finish = pace_report[f"Finish_{report_minicourse}"] - pace_report[f"Start_{report_minicourse}"]
-            else:
-                if i < len(all_report_minicourse_starts)-1:  
-                    report_next_minicourse = all_report_minicourse_starts[i+1].split('_')[-1]
-                    time_to_finish = pace_report[f"Start_{report_next_minicourse}"] - pace_report[f"Start_{report_minicourse}"]
-                else: 
-                    time_to_finish = None    
+        print(all_report_minicourse_starts)
+        for i in range(len(all_report_minicourse_starts)-1):
+            report_minicourse = all_report_minicourse_starts[i].split('_')[-1]   
             
-            time_to_finish = time_to_finish // pd.to_timedelta(7, 'D')
+            time_to_finish = pace_report[all_report_minicourse_starts[i+1]] - pace_report[all_report_minicourse_starts[i]]
+            time_to_finish = (time_to_finish / pd.to_timedelta(7, 'D')).apply(np.ceil)
             pace_report[f'{report_minicourse} Finished In'] = time_to_finish
+
+        # Last MiniCourse
+        last_minicourse = all_report_minicourse_starts[-1].split('_')[-1]
+        if f"Finish_{last_minicourse}" in pace_report.columns:
+            time_to_finish = pace_report[f"Finish_{last_minicourse}"] - pace_report[f"Start_{last_minicourse}"]
+            time_to_finish = (time_to_finish / pd.to_timedelta(7, 'D')).apply(np.ceil)
+            pace_report[f'{last_minicourse} Finished In'] = time_to_finish
+        else: 
+            pace_report[f'{last_minicourse} Finished In'] = None
+            
 
         # Fill-in minicourse that don't have report time
         pace_report[list(map(lambda x: x+' Finished In', missing_minicourses))] = None
@@ -409,6 +413,7 @@ class Learners(object):
         # Get all the modules available in the report
         for m in modules:
             pace_report[f"Module {m[1]} Finished In"] = pace_report[list(filter(lambda x: x.startswith(m), pace_report.columns))].sum(axis=1)
+            pace_report.loc[pace_report[f"Module {m[1]} Finished In"] == 0, f"Module {m[1]} Finished In"] = None
 
         # Get Weeks in Course 
         pace_report['Weeks in Course'] = pd.to_datetime(date.today()) - pace_report['Start_M1.1']
@@ -505,12 +510,10 @@ class Learners(object):
         # Update timestamp 
         pace_report['Updated At'] = NOW
         pace_report = pace_report.sort_values(by=['Learning type', 'Batch Code', 'Email'], ascending=True)  
-        col_orders = ['Email', 'Student name', 'Tags', 'Learning type', 'Status',
-            'Batch Code', 'Batch', 'Duration to Drop', 'Enrollment Month',
-            'Dropout Month', 'Graduated Month', 'Return Month'] + list(map(lambda x: 'Start_'+x, minicourses)) + list(map(lambda x: x+" Finished In", minicourses)) + list(map(lambda x: f"Module {x[1]} Finished In", modules)) + ['Weeks in Course', 'Mini-Course At', 'Module At', 
+        col_orders = ['Email', 'Student name', 'Tags', 'Learning type', 'Status', 'Batch Code', 'Batch', 'Duration to Drop', 
+                    'Enrollment Month', 'Dropout Month', 'Graduated Month', 'Return Month'] + list(map(lambda x: 'Start_'+x, minicourses)) + list(map(lambda x: x+" Finished In", minicourses)) + list(map(lambda x: f"Module {x[1]} Finished In", modules)) + ['Weeks in Course', 'Mini-Course At', 'Module At', 
                                                                                                                                                                                                                                     'Expected Module At', 'On Track',
-                                                                                                                                                                                                                                    'Expected Mini-Course At', 'On Track Mini-Course', 'Weeks Off Track','Updated At']
-                                                                                                                                                                                
+                                                                                                                                                                                                                                    'Expected Mini-Course At', 'On Track Mini-Course', 'Weeks Off Track','Updated At']                                                                                                                                            
         pace_report = pace_report[col_orders]
 
         if save:
@@ -519,7 +522,7 @@ class Learners(object):
                             'https://docs.google.com/spreadsheets/d/1cZQsAuLvKJTCR0JGdC2qDST2tJVIqBfYf819fBFGL0Y/edit#gid=0',
                             f'{course}_LW_Master',
                             clear_sheet=True)
-            Logger.success(f'Successfully wrote {course} student progress data')        
+            Logger.success(f'Successfully wrote {course} student progress data')      
         
         return pace_report
     
