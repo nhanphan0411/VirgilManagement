@@ -353,7 +353,8 @@ class Learners(object):
     # ----- Preprocess raw reports: Users Data -----
 
     def load_learning_pace_report(self, reports):
-        """Report of how many days it takes for a learner to complete a module"""
+        """Report a raw report of how many days it takes for a learner to complete a module
+           Raw reports are to be saved in CloudSQL"""
         pace_report = pd.concat(reports.values())[['Email', 'User Name', 'Tags', 'Course Start Date', 'Date of certificate', 'MiniCourse']]
         pace_report.rename(columns={'Course Start Date': 'Start', 
                                     'Date of certificate': 'Finish'}, inplace=True)
@@ -385,7 +386,6 @@ class Learners(object):
         # Duration = start of latter minicourse - start of previous minicourse 
         # Last minicourse = date of certificate - start of the last minicourse  
         all_report_minicourse_starts = list(filter(lambda x: x.startswith('Start'), pace_report.columns))
-        print(all_report_minicourse_starts)
         for i in range(len(all_report_minicourse_starts)-1):
             report_minicourse = all_report_minicourse_starts[i].split('_')[-1]   
             
@@ -461,7 +461,6 @@ class Learners(object):
         def check_on_track_by_module(row):
             module_at = row['Module At']
             module_expected = row['Expected Module At'] 
-            status = row['Status']
 
             # Learners who are supposed to graduate already
             if module_expected > len(modules):
@@ -470,7 +469,7 @@ class Learners(object):
             else: 
                 return module_at >= module_expected
 
-        pace_report.loc[pace_report['Status']=='active', 'On Track'] = pace_report.loc[pace_report['Status']=='active', ['Module At', 'Expected Module At', 'Status']].apply(check_on_track_by_module, axis=1)
+        pace_report.loc[pace_report['Status']=='active', 'On Track'] = pace_report.loc[pace_report['Status']=='active', ['Module At', 'Expected Module At']].apply(check_on_track_by_module, axis=1)
 
         # Get On Track by Minicourse
         def get_expected_minicourse_at(weeks, course): 
