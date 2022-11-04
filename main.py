@@ -514,6 +514,7 @@ class Learners(object):
                                                                                                                                                                                                                                     'Expected Module At', 'On Track',
                                                                                                                                                                                                                                     'Expected Mini-Course At', 'On Track Mini-Course', 'Weeks Off Track','Updated At']                                                                                                                                            
         pace_report = pace_report[col_orders]
+        pace_report.reset_index(drop=True, inplace=True)
 
         if save:
             # Save
